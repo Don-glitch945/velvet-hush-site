@@ -62,7 +62,7 @@ function Pattern({ type, tone }) {
   );
 }
 
-function ProductCard({ product, onOpen }) {
+function ProductCard({ product, onOpen, onZoom }) {
   const tone = product.cat === "lubricants" || product.cat === "intimacy" ? "oxblood" : "brass";
   const CatIcon = CATEGORIES.find(c => c.id === product.cat)?.icon;
   const outOfStock = (product.stock ?? 0) <= 0 || product.available === false;
@@ -72,7 +72,16 @@ function ProductCard({ product, onOpen }) {
       <div className="h-36 relative flex items-center justify-center overflow-hidden"
         style={{ background: "linear-gradient(160deg, var(--surface-2), var(--bg))" }}>
         {product.imageUrl ? (
-          <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
+          <div
+            role="button"
+            aria-label={`View larger image of ${product.name}`}
+            tabIndex={0}
+            className="w-full h-full cursor-zoom-in"
+            onClick={(e) => { e.stopPropagation(); onZoom?.(product); }}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); onZoom?.(product); } }}
+          >
+            <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
+          </div>
         ) : (
           <div className="w-24 h-24 opacity-80 group-hover:opacity-100 transition-opacity"><Pattern type={product.pattern || "dots"} tone={tone} /></div>
         )}
@@ -97,6 +106,35 @@ function ProductCard({ product, onOpen }) {
         </div>
       </div>
     </button>
+  );
+}
+
+function Lightbox({ src, alt, onClose }) {
+  if (!src) return null;
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-6"
+      style={{ background: "rgba(10,8,13,0.92)" }}
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label={alt || "Image preview"}
+    >
+      <button
+        onClick={onClose}
+        className="absolute top-4 right-4 w-10 h-10 rounded-full flex items-center justify-center"
+        style={{ background: "var(--surface)", color: "var(--ink)" }}
+        aria-label="Close"
+      >
+        <X size={18} />
+      </button>
+      <img
+        src={src}
+        alt={alt || ""}
+        className="max-w-full max-h-full object-contain rounded-md"
+        onClick={(e) => e.stopPropagation()}
+      />
+    </div>
   );
 }
 
@@ -129,6 +167,7 @@ export default function Storefront() {
   const [checkoutError, setCheckoutError] = useState(null);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [lightboxProduct, setLightboxProduct] = useState(null);
 
   const { user, profile, isAdmin, logOut } = useAuth();
   const { products } = useProducts();
@@ -280,6 +319,13 @@ export default function Storefront() {
       </header>
 
       {authModalOpen && <AuthModal onClose={() => setAuthModalOpen(false)} />}
+      {lightboxProduct && (
+        <Lightbox
+          src={lightboxProduct.imageUrl}
+          alt={lightboxProduct.name}
+          onClose={() => setLightboxProduct(null)}
+        />
+      )}
 
       {page === "home" && (
         <>
@@ -324,7 +370,7 @@ export default function Storefront() {
               <h2 className="font-serif text-2xl" style={{ fontFamily: "Fraunces, serif" }}>New This Week</h2>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {products.slice(0, 8).map(p => <ProductCard key={p.id} product={p} onOpen={goProduct} />)}
+              {products.slice(0, 8).map(p => <ProductCard key={p.id} product={p} onOpen={goProduct} onZoom={setLightboxProduct} />)}
             </div>
           </section>
         </>
@@ -338,7 +384,7 @@ export default function Storefront() {
           <h2 className="font-serif text-3xl mb-2" style={{ fontFamily: "Fraunces, serif" }}>{CATEGORIES.find(c => c.id === activeCat)?.name}</h2>
           <p className="text-sm mb-8" style={{ color: "var(--muted)" }}>{CATEGORIES.find(c => c.id === activeCat)?.blurb}</p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {products.filter(p => p.cat === activeCat).map(p => <ProductCard key={p.id} product={p} onOpen={goProduct} />)}
+            {products.filter(p => p.cat === activeCat).map(p => <ProductCard key={p.id} product={p} onOpen={goProduct} onZoom={setLightboxProduct} />)}
           </div>
         </section>
       )}
@@ -349,8 +395,21 @@ export default function Storefront() {
             <ArrowLeft size={14} /> Back to {CATEGORIES.find(c => c.id === activeProduct.cat)?.name}
           </button>
           <div className="grid md:grid-cols-2 gap-10">
-            <div className="h-72 rounded-lg relative flex items-center justify-center border" style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
-              <div className="w-40 h-40"><Pattern type={activeProduct.pattern} tone={activeProduct.cat === "lubricants" || activeProduct.cat === "intimacy" ? "oxblood" : "brass"} /></div>
+            <div className="h-72 rounded-lg relative flex items-center justify-center border overflow-hidden" style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
+              {activeProduct.imageUrl ? (
+                <div
+                  role="button"
+                  aria-label={`View larger image of ${activeProduct.name}`}
+                  tabIndex={0}
+                  className="w-full h-full cursor-zoom-in"
+                  onClick={() => setLightboxProduct(activeProduct)}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setLightboxProduct(activeProduct); } }}
+                >
+                  <img src={activeProduct.imageUrl} alt={activeProduct.name} className="w-full h-full object-cover" />
+                </div>
+              ) : (
+                <div className="w-40 h-40"><Pattern type={activeProduct.pattern} tone={activeProduct.cat === "lubricants" || activeProduct.cat === "intimacy" ? "oxblood" : "brass"} /></div>
+              )}
               {(() => {
                 const CatIcon = CATEGORIES.find(c => c.id === activeProduct.cat)?.icon;
                 const tone = activeProduct.cat === "lubricants" || activeProduct.cat === "intimacy" ? "oxblood" : "brass";
