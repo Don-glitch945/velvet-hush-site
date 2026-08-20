@@ -1,19 +1,86 @@
 # Velvet Hush
 
-A demo storefront (React + Vite + Tailwind) with a companion payment
-backend (Express + Stripe). Nothing here is deployed yet — see
-"Getting it live" below.
+A demo storefront (React + Vite + Tailwind) with Firebase-backed login
+and an admin panel, plus a companion payment backend (Express +
+Stripe) that isn't wired to the admin panel yet. Nothing here is
+deployed yet — see "Getting it live" below.
 
 ## Project layout
 
 ```
 velvet-hush-site/
-├── src/App.jsx        the storefront (pages, cart, product data)
-├── src/main.jsx        React entry point
+├── src/App.jsx                    the storefront (pages, cart, checkout)
+├── src/main.jsx                   React entry point (wraps app in AuthProvider)
+├── src/firebase.js                Firebase app/auth/firestore init
+├── src/contexts/AuthContext.jsx   signed-in user + their Firestore profile (role, balance)
+├── src/hooks/useProducts.js       live product catalog (read) + admin CRUD (write)
+├── src/hooks/useUsers.js          admin: list users, edit role/balance
+├── src/components/AuthModal.jsx   sign in / register (email+password, Google)
+├── src/components/AdminPanel.jsx  admin UI: products tab + users/balances tab
+├── src/data/seedProducts.js       original demo catalog, used only as one-click seed data
+├── firestore.rules                security rules (admin-only writes, enforced server-side)
 ├── index.html
-├── server/server.js    Stripe checkout backend
-└── server/.env.example environment variables the backend needs
+├── server/server.js               Stripe checkout backend (unrelated to Firebase)
+└── server/.env.example            environment variables the backend needs
 ```
+
+## Firebase setup
+
+You said you already created a Firebase project, so:
+
+1. **Enable Authentication providers** — Firebase Console → your
+   project → Build → Authentication → Sign-in method → enable
+   **Email/Password** and **Google**.
+2. **Create a Firestore database** — Build → Firestore Database →
+   Create database → start in production mode (the rules below
+   replace the defaults) → pick a region.
+3. **Get your web app config** — Project settings (gear icon) →
+   General → scroll to "Your apps" → if you don't have a web app yet,
+   click **</>** to register one → copy the `firebaseConfig` values.
+4. **Set up your `.env`**:
+   ```bash
+   cp .env.example .env
+   # then paste the six VITE_FIREBASE_* values from step 3
+   ```
+5. **Deploy the security rules** — these are what actually enforce
+   "only admins can edit products/balances" (the UI hides buttons,
+   but the rules are what stop someone from calling the API directly).
+   Easiest path, using the Firebase CLI:
+   ```bash
+   npm install -g firebase-tools
+   firebase login
+   firebase init firestore   # point it at this project, keep existing firestore.rules
+   firebase deploy --only firestore:rules
+   ```
+   Or just paste the contents of `firestore.rules` into Firebase
+   Console → Firestore Database → Rules → publish.
+6. **Load the product catalog** — once the app is running, sign up
+   for an account, make yourself admin (next section), open
+   **Admin Panel → Products**, and click **"Load demo catalog"** to
+   seed the original 19 products into Firestore. From then on you can
+   edit price/stock/availability/image per product, or add new ones.
+
+### Making your first admin
+
+The security rules only let an *existing* admin promote someone else
+— which means the very first admin has to be set by hand, once:
+
+1. Sign up for an account normally on the running site.
+2. Firebase Console → Firestore Database → `users` collection → find
+   the document with your `uid` → edit the `role` field from
+   `"customer"` to `"admin"`.
+3. Refresh the site — you'll see **Admin Panel** in your account menu.
+   From there you can promote/demote any other user's role too.
+
+### About balances
+
+Admins can set a customer's `balance` field from the Users tab. This
+is just a number in Firestore right now — it isn't connected to
+Stripe or spent at checkout yet, since you said to set up payments
+later. When you're ready to wire it in, the natural place is inside
+the `/api/create-checkout-session` flow in `server/server.js`,
+checking/decrementing balance server-side (via the Firebase Admin
+SDK) before creating the Stripe session.
 
 ## Run it locally
 
@@ -41,6 +108,12 @@ local dev, your Render URL once deployed).
 ### 1. Frontend → Vercel (or Netlify / Cloudflare Pages)
 - Push this folder to a GitHub repo.
 - Import it in Vercel → it auto-detects Vite → deploy.
+- Add the six `VITE_FIREBASE_*` variables (and `VITE_API_URL`) under
+  Project Settings → Environment Variables — the `.env` file itself
+  never gets committed or deployed.
+- In Firebase Console → Authentication → Settings → **Authorized
+  domains**, add your `*.vercel.app` URL (and later your custom
+  domain) or sign-in will fail on the deployed site.
 - You get a `*.vercel.app` URL immediately; add your own domain under
   Project Settings → Domains once you own one.
 

@@ -1,5 +1,9 @@
 import React, { useState, useMemo } from "react";
-import { ShoppingBag, Flame, Wind, Droplet, Gem, ChevronRight, X, Minus, Plus, Search, ArrowLeft, Wrench, CreditCard, Wallet, Smartphone, Mail, Phone, MapPin, Clock, Send } from "lucide-react";
+import { ShoppingBag, Flame, Wind, Droplet, Gem, ChevronRight, X, Minus, Plus, Search, ArrowLeft, Wrench, CreditCard, Wallet, Smartphone, Mail, Phone, MapPin, Clock, Send, User, LogOut, ShieldCheck, Ban } from "lucide-react";
+import { useAuth } from "./contexts/AuthContext.jsx";
+import { useProducts } from "./hooks/useProducts.js";
+import AuthModal from "./components/AuthModal.jsx";
+import AdminPanel from "./components/AdminPanel.jsx";
 
 /* ---------------------------------------------------------
    TOKENS
@@ -22,28 +26,6 @@ const CATEGORIES = [
   { id: "lubricants", name: "Lubricants", icon: Droplet, blurb: "Body-safe formulas for every kind of night." },
   { id: "intimacy", name: "Adult Toys", icon: Gem, blurb: "Considered design, quiet packaging, discreet shipping." },
   { id: "tools", name: "Tools & Accessories", icon: Wrench, blurb: "Grinders, lighters, papers, and cleaning kits." },
-];
-
-const PRODUCTS = [
-  { id: "c1", cat: "cigars", name: "Ceniza Robusto", price: 14, note: "Nicaraguan wrapper, cedar & cocoa finish", pattern: "stripe" },
-  { id: "c2", cat: "cigars", name: "Vestidor Toro", price: 19, note: "Dominican blend, slow burn, pepper close", pattern: "grid" },
-  { id: "c3", cat: "cigars", name: "Humo Corona", price: 11, note: "Connecticut shade, mellow and creamy", pattern: "dots" },
-  { id: "v1", cat: "vapes", name: "Ember Mini Pen", price: 29, note: "1200mAh, 3 heat settings, USB-C", pattern: "grid" },
-  { id: "v2", cat: "vapes", name: "Halo Pod Kit", price: 34, note: "Refillable pods, ceramic coil", pattern: "stripe" },
-  { id: "v3", cat: "vapes", name: "Drift Disposable 3-Pack", price: 22, note: "600 puffs each, five profiles", pattern: "dots" },
-  { id: "g1", cat: "glass", name: "Amber Spoon Pipe", price: 38, note: "Hand-blown borosilicate, honeycomb base", pattern: "dots" },
-  { id: "g2", cat: "glass", name: "Smoked Quartz Bubbler", price: 65, note: "Water-cooled, removable downstem", pattern: "grid" },
-  { id: "g3", cat: "glass", name: "Onyx Chillum", price: 21, note: "Compact, pocket case included", pattern: "stripe" },
-  { id: "l1", cat: "lubricants", name: "Silk Water-Based 4oz", price: 16, note: "Glycerin-free, toy-safe, unscented", pattern: "dots" },
-  { id: "l2", cat: "lubricants", name: "Ember Warming Gel", price: 18, note: "Aloe base, long-lasting glide", pattern: "stripe" },
-  { id: "l3", cat: "lubricants", name: "Silicone Reserve 8oz", price: 24, note: "Ultra-long-lasting, condom-compatible", pattern: "grid" },
-  { id: "t1", cat: "intimacy", name: "Aria Wand", price: 89, note: "Whisper-quiet motor, 8 patterns, USB-C", pattern: "grid" },
-  { id: "t2", cat: "intimacy", name: "Nocturne Set", price: 64, note: "Two-piece couples set, medical silicone", pattern: "dots" },
-  { id: "t3", cat: "intimacy", name: "Velvet Cuffs", price: 32, note: "Adjustable, quick-release clasp", pattern: "stripe" },
-  { id: "x1", cat: "tools", name: "Brass Torch Lighter", price: 24, note: "Windproof triple-flame, refillable", pattern: "stripe" },
-  { id: "x2", cat: "tools", name: "Walnut Grinder 4-Piece", price: 27, note: "Sharp teeth, pollen catcher included", pattern: "dots" },
-  { id: "x3", cat: "tools", name: "Hemp Rolling Papers 3-Pack", price: 6, note: "Unbleached, slow burn, natural gum", pattern: "grid" },
-  { id: "x4", cat: "tools", name: "Glass Cleaning Kit", price: 15, note: "Reusable pipe cleaners and solution", pattern: "stripe" },
 ];
 
 function Pattern({ type, tone }) {
@@ -83,15 +65,25 @@ function Pattern({ type, tone }) {
 function ProductCard({ product, onOpen }) {
   const tone = product.cat === "lubricants" || product.cat === "intimacy" ? "oxblood" : "brass";
   const CatIcon = CATEGORIES.find(c => c.id === product.cat)?.icon;
+  const outOfStock = (product.stock ?? 0) <= 0 || product.available === false;
   return (
     <button onClick={() => onOpen(product)} className="group text-left rounded-lg overflow-hidden border transition-all duration-300"
-      style={{ borderColor: "var(--border)", background: "var(--surface)" }}>
-      <div className="h-36 relative flex items-center justify-center"
+      style={{ borderColor: "var(--border)", background: "var(--surface)", opacity: outOfStock ? 0.6 : 1 }}>
+      <div className="h-36 relative flex items-center justify-center overflow-hidden"
         style={{ background: "linear-gradient(160deg, var(--surface-2), var(--bg))" }}>
-        <div className="w-24 h-24 opacity-80 group-hover:opacity-100 transition-opacity"><Pattern type={product.pattern} tone={tone} /></div>
+        {product.imageUrl ? (
+          <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-24 h-24 opacity-80 group-hover:opacity-100 transition-opacity"><Pattern type={product.pattern || "dots"} tone={tone} /></div>
+        )}
         {CatIcon && (
           <div className="absolute top-3 left-3 w-7 h-7 rounded-full flex items-center justify-center" style={{ background: "rgba(20,17,26,0.6)" }}>
             <CatIcon size={13} style={{ color: tone === "brass" ? "var(--brass)" : "var(--oxblood)" }} />
+          </div>
+        )}
+        {outOfStock && (
+          <div className="absolute top-3 right-3 px-2 py-1 rounded-full text-[10px] font-medium" style={{ background: "rgba(20,17,26,0.8)", color: "var(--muted)" }}>
+            Out of stock
           </div>
         )}
       </div>
@@ -135,17 +127,22 @@ export default function Storefront() {
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState(null);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+
+  const { user, profile, isAdmin, logOut } = useAuth();
+  const { products } = useProducts();
 
   const cartCount = Object.values(cart).reduce((a, b) => a + b, 0);
   const cartTotal = useMemo(
-    () => Object.entries(cart).reduce((sum, [id, qty]) => sum + (PRODUCTS.find(p => p.id === id)?.price || 0) * qty, 0),
-    [cart]
+    () => Object.entries(cart).reduce((sum, [id, qty]) => sum + (products.find(p => p.id === id)?.price || 0) * qty, 0),
+    [cart, products]
   );
 
   // Cigars/vapes/glass can't run through Stripe (see README) — they'd
   // route through the separate high-risk gateway once that's built.
   const RESTRICTED_CATS = ["cigars", "vapes", "glass"];
-  const cartEntries = Object.entries(cart).map(([id, qty]) => ({ id, qty, product: PRODUCTS.find(p => p.id === id) })).filter(e => e.product);
+  const cartEntries = Object.entries(cart).map(([id, qty]) => ({ id, qty, product: products.find(p => p.id === id) })).filter(e => e.product);
   const payableEntries = cartEntries.filter(e => !RESTRICTED_CATS.includes(e.product.cat));
   const restrictedEntries = cartEntries.filter(e => RESTRICTED_CATS.includes(e.product.cat));
 
@@ -174,7 +171,11 @@ export default function Storefront() {
     }
   };
 
-  const addToCart = (id, qty = 1) => setCart(c => ({ ...c, [id]: (c[id] || 0) + qty }));
+  const addToCart = (id, qty = 1) => {
+    const product = products.find(p => p.id === id);
+    if (!product || product.available === false || (product.stock ?? 0) <= 0) return;
+    setCart(c => ({ ...c, [id]: (c[id] || 0) + qty }));
+  };
   const setQty = (id, qty) => setCart(c => {
     const next = { ...c };
     if (qty <= 0) delete next[id]; else next[id] = qty;
@@ -185,6 +186,7 @@ export default function Storefront() {
   const goProduct = (p) => { setActiveProduct(p); setPage("product"); window.scrollTo?.(0, 0); };
   const goHome = () => { setPage("home"); window.scrollTo?.(0, 0); };
   const goContact = () => { setPage("contact"); window.scrollTo?.(0, 0); };
+  const goAdmin = () => { setPage("admin"); setUserMenuOpen(false); window.scrollTo?.(0, 0); };
   const [payment, setPayment] = useState("card");
 
   if (!verified) {
@@ -232,14 +234,52 @@ export default function Storefront() {
             ))}
             <button onClick={goContact} className="hover:opacity-70 transition-opacity" style={{ color: "var(--muted)" }}>Contact</button>
           </nav>
-          <button onClick={() => setCartOpen(true)} className="relative p-2 rounded-md" style={{ background: "var(--surface)" }}>
-            <ShoppingBag size={18} style={{ color: "var(--ink)" }} />
-            {cartCount > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 text-[10px] w-5 h-5 rounded-full flex items-center justify-center" style={{ background: "var(--brass)", color: "#1A1520" }}>{cartCount}</span>
+          <div className="flex items-center gap-2">
+            {user ? (
+              <div className="relative">
+                <button onClick={() => setUserMenuOpen(o => !o)} className="flex items-center gap-2 px-2.5 py-2 rounded-md" style={{ background: "var(--surface)" }}>
+                  <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ background: "var(--surface-2)" }}>
+                    <User size={13} style={{ color: "var(--brass)" }} />
+                  </div>
+                  <span className="hidden sm:inline text-sm max-w-[8rem] truncate" style={{ color: "var(--ink)" }}>{profile?.displayName || user.email}</span>
+                </button>
+                {userMenuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-20" onClick={() => setUserMenuOpen(false)} />
+                    <div className="absolute right-0 mt-2 w-56 rounded-md border z-30 overflow-hidden" style={{ borderColor: "var(--border)", background: "var(--surface)" }}>
+                      <div className="px-4 py-3 border-b" style={{ borderColor: "var(--border)" }}>
+                        <p className="text-sm truncate" style={{ color: "var(--ink)" }}>{profile?.displayName || "Customer"}</p>
+                        <p className="text-xs truncate" style={{ color: "var(--muted)" }}>{user.email}</p>
+                        <p className="text-xs mt-1" style={{ color: "var(--brass)" }}>Balance: ${(profile?.balance ?? 0).toFixed(2)}</p>
+                      </div>
+                      {isAdmin && (
+                        <button onClick={goAdmin} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left hover:opacity-80" style={{ color: "var(--ink)" }}>
+                          <ShieldCheck size={14} style={{ color: "var(--brass)" }} /> Admin Panel
+                        </button>
+                      )}
+                      <button onClick={() => { logOut(); setUserMenuOpen(false); }} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left hover:opacity-80" style={{ color: "var(--ink)" }}>
+                        <LogOut size={14} style={{ color: "var(--muted)" }} /> Sign out
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : (
+              <button onClick={() => setAuthModalOpen(true)} className="px-3 py-2 rounded-md text-sm font-medium" style={{ background: "var(--surface)", color: "var(--ink)" }}>
+                Sign In
+              </button>
             )}
-          </button>
+            <button onClick={() => setCartOpen(true)} className="relative p-2 rounded-md" style={{ background: "var(--surface)" }}>
+              <ShoppingBag size={18} style={{ color: "var(--ink)" }} />
+              {cartCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 text-[10px] w-5 h-5 rounded-full flex items-center justify-center" style={{ background: "var(--brass)", color: "#1A1520" }}>{cartCount}</span>
+              )}
+            </button>
+          </div>
         </div>
       </header>
+
+      {authModalOpen && <AuthModal onClose={() => setAuthModalOpen(false)} />}
 
       {page === "home" && (
         <>
@@ -284,7 +324,7 @@ export default function Storefront() {
               <h2 className="font-serif text-2xl" style={{ fontFamily: "Fraunces, serif" }}>New This Week</h2>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {PRODUCTS.slice(0, 8).map(p => <ProductCard key={p.id} product={p} onOpen={goProduct} />)}
+              {products.slice(0, 8).map(p => <ProductCard key={p.id} product={p} onOpen={goProduct} />)}
             </div>
           </section>
         </>
@@ -298,7 +338,7 @@ export default function Storefront() {
           <h2 className="font-serif text-3xl mb-2" style={{ fontFamily: "Fraunces, serif" }}>{CATEGORIES.find(c => c.id === activeCat)?.name}</h2>
           <p className="text-sm mb-8" style={{ color: "var(--muted)" }}>{CATEGORIES.find(c => c.id === activeCat)?.blurb}</p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {PRODUCTS.filter(p => p.cat === activeCat).map(p => <ProductCard key={p.id} product={p} onOpen={goProduct} />)}
+            {products.filter(p => p.cat === activeCat).map(p => <ProductCard key={p.id} product={p} onOpen={goProduct} />)}
           </div>
         </section>
       )}
@@ -326,9 +366,19 @@ export default function Storefront() {
               <h1 className="font-serif text-3xl mb-3" style={{ fontFamily: "Fraunces, serif" }}>{activeProduct.name}</h1>
               <p className="text-base mb-4" style={{ color: "var(--muted)" }}>{activeProduct.note}</p>
               <p className="font-serif text-2xl mb-8" style={{ fontFamily: "Fraunces, serif", color: "var(--brass)" }}>${activeProduct.price}</p>
-              <button onClick={() => { addToCart(activeProduct.id); setCartOpen(true); }} className="px-6 py-3 rounded-md font-medium" style={{ background: "var(--brass)", color: "#1A1520" }}>
-                Add to Cart
-              </button>
+              {(() => {
+                const live = products.find(p => p.id === activeProduct.id) || activeProduct;
+                const outOfStock = (live.stock ?? 0) <= 0 || live.available === false;
+                return (
+                  <button
+                    onClick={() => { addToCart(live.id); setCartOpen(true); }}
+                    disabled={outOfStock}
+                    className="px-6 py-3 rounded-md font-medium"
+                    style={{ background: outOfStock ? "var(--surface-2)" : "var(--brass)", color: outOfStock ? "var(--muted)" : "#1A1520", cursor: outOfStock ? "not-allowed" : "pointer" }}>
+                    {outOfStock ? "Out of Stock" : "Add to Cart"}
+                  </button>
+                );
+              })()}
               <p className="text-xs mt-6" style={{ color: "var(--muted)" }}>Ships in unmarked packaging. Age verification required at delivery.</p>
             </div>
           </div>
@@ -380,6 +430,23 @@ export default function Storefront() {
         </section>
       )}
 
+      {page === "admin" && (
+        isAdmin ? (
+          <AdminPanel onBack={goHome} />
+        ) : (
+          <section className="max-w-lg mx-auto px-5 py-24 text-center">
+            <Ban size={28} className="mx-auto mb-4" style={{ color: "var(--oxblood)" }} />
+            <h2 className="font-serif text-2xl mb-2" style={{ fontFamily: "Fraunces, serif" }}>Admins only</h2>
+            <p className="text-sm mb-6" style={{ color: "var(--muted)" }}>
+              {user ? "Your account doesn't have admin access." : "Sign in with an admin account to view this page."}
+            </p>
+            <button onClick={goHome} className="px-5 py-2.5 rounded-md text-sm font-medium" style={{ background: "var(--brass)", color: "#1A1520" }}>
+              Back to shop
+            </button>
+          </section>
+        )
+      )}
+
       {/* Cart drawer */}
       {cartOpen && (
         <div className="fixed inset-0 z-30 flex justify-end">
@@ -392,7 +459,7 @@ export default function Storefront() {
             <div className="flex-1 overflow-y-auto p-5 space-y-4">
               {cartCount === 0 && <p className="text-sm" style={{ color: "var(--muted)" }}>Your cart is empty.</p>}
               {Object.entries(cart).map(([id, qty]) => {
-                const p = PRODUCTS.find(pr => pr.id === id);
+                const p = products.find(pr => pr.id === id);
                 if (!p) return null;
                 return (
                   <div key={id} className="flex gap-3 items-center">

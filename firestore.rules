@@ -1,0 +1,54 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // True only if the CALLER's own user doc already has role == "admin".
+    // This is the load-bearing check for every admin-only rule below —
+    // nobody can grant themselves admin, because writes to `role` are
+    // only allowed when this function is already true (see /users below).
+    function isAdmin() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // ---- users/{uid} ----
+    // - Anyone signed in can read/create their OWN doc (created right
+    //   after signup by the client, always with role: "customer").
+    // - Admins can read/update ANY user doc (for the balance/role admin UI).
+    // - A non-admin can update their own doc, but never the role or
+    //   balance fields — those only change via an admin write.
+    match /users/{uid} {
+      allow get: if isSelf(uid) || isAdmin();
+      allow list: if isAdmin();
+
+      allow create: if isSelf(uid)
+        && request.resource.data.role == 'customer'
+        && request.resource.data.balance == 0;
+
+      allow update: if isAdmin()
+        || (isSelf(uid)
+            && request.resource.data.role == resource.data.role
+            && request.resource.data.balance == resource.data.balance);
+
+      allow delete: if isAdmin();
+    }
+
+    // ---- products/{productId} ----
+    // Public read (storefront works for signed-out visitors too).
+    // Only admins can create/update/delete products.
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}
