@@ -16,6 +16,7 @@ import {
   doc,
   getDoc,
   setDoc,
+  updateDoc,
   onSnapshot,
   serverTimestamp,
 } from "firebase/firestore";
@@ -113,6 +114,27 @@ export function AuthProvider({ children }) {
     await updatePassword(current, newPassword);
   };
 
+  // Updates the display name both on the Firebase Auth user record and
+  // on the Firestore profile doc (the latter is what the UI actually
+  // renders from, via the live onSnapshot subscription above).
+  const updateDisplayName = async (displayName) => {
+    const current = auth.currentUser;
+    if (!current) throw new Error("Not signed in.");
+    const trimmed = (displayName || "").trim();
+    if (!trimmed) throw new Error("Username can't be empty.");
+    await updateProfile(current, { displayName: trimmed });
+    await updateDoc(doc(db, "users", current.uid), { displayName: trimmed });
+  };
+
+  // Delivery address lives on the user's own Firestore doc. Firestore
+  // rules allow a signed-in user to update any field on their own doc
+  // except role/balance, so this is a plain merge-style update.
+  const updateDeliveryAddress = async (address) => {
+    const current = auth.currentUser;
+    if (!current) throw new Error("Not signed in.");
+    await updateDoc(doc(db, "users", current.uid), { address });
+  };
+
   const value = {
     user,
     profile,
@@ -124,6 +146,8 @@ export function AuthProvider({ children }) {
     logOut,
     resetPassword,
     changePassword,
+    updateDisplayName,
+    updateDeliveryAddress,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
