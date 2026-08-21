@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from "react";
-import { ShoppingBag, Flame, ChevronRight, X, Minus, Plus, Search, ArrowLeft, CreditCard, Wallet, Smartphone, Mail, Phone, MapPin, Clock, Send, User, LogOut, ShieldCheck, Ban } from "lucide-react";
+import { ShoppingBag, Flame, ChevronRight, X, Minus, Plus, Search, ArrowLeft, CreditCard, Wallet, Smartphone, Mail, Phone, MapPin, Clock, Send, User, LogOut, ShieldCheck, Ban, CheckCircle2 } from "lucide-react";
 import { useAuth } from "./contexts/AuthContext.jsx";
 import { useProducts } from "./hooks/useProducts.js";
 import { useCategories } from "./hooks/useCategories.js";
@@ -8,6 +8,7 @@ import { DEFAULT_CATEGORIES } from "./data/defaultCategories.js";
 import { resolveIcon } from "./lib/icons.js";
 import AuthModal from "./components/AuthModal.jsx";
 import AdminPanel from "./components/AdminPanel.jsx";
+import ActionToast from "./components/ActionToast.jsx";
 
 /* ---------------------------------------------------------
    TOKENS
@@ -168,6 +169,8 @@ export default function Storefront() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const searchBoxRef = useRef(null);
+  const [authToast, setAuthToast] = useState(false);
+  const [cartToast, setCartToast] = useState(null); // holds the product just added
 
   const { user, profile, isAdmin, logOut } = useAuth();
   const { products } = useProducts();
@@ -245,6 +248,7 @@ export default function Storefront() {
     const product = products.find(p => p.id === id);
     if (!product || product.available === false || (product.stock ?? 0) <= 0) return;
     setCart(c => ({ ...c, [id]: (c[id] || 0) + qty }));
+    setCartToast(product);
   };
   const setQty = (id, qty) => setCart(c => {
     const next = { ...c };
@@ -260,6 +264,11 @@ export default function Storefront() {
   const goAbout = () => { setPage("about"); window.scrollTo?.(0, 0); };
   const goAdmin = () => { setPage("admin"); setUserMenuOpen(false); window.scrollTo?.(0, 0); };
   const [payment, setPayment] = useState("card");
+
+  const handleAuthSuccess = () => {
+    setAuthModalOpen(false);
+    setAuthToast(true);
+  };
 
   if (!verified) {
     return (
@@ -386,6 +395,17 @@ export default function Storefront() {
                 Sign In
               </button>
             )}
+            {user && (
+              <button
+                onClick={() => logOut()}
+                title="Log out"
+                aria-label="Log out"
+                className="hidden sm:flex p-2 rounded-md hover:opacity-80 transition-opacity"
+                style={{ background: "var(--surface)" }}
+              >
+                <LogOut size={16} style={{ color: "var(--muted)" }} />
+              </button>
+            )}
             <button onClick={() => setCartOpen(true)} className="relative p-2 rounded-md" style={{ background: "var(--surface)" }}>
               <ShoppingBag size={18} style={{ color: "var(--ink)" }} />
               {cartCount > 0 && (
@@ -435,7 +455,58 @@ export default function Storefront() {
         )}
       </header>
 
-      {authModalOpen && <AuthModal onClose={() => setAuthModalOpen(false)} />}
+      {authModalOpen && (
+        <AuthModal onClose={() => setAuthModalOpen(false)} onSuccess={handleAuthSuccess} />
+      )}
+
+      {authToast && (
+        <ActionToast
+          icon={CheckCircle2}
+          iconTone="brass"
+          iconAnim="pop"
+          title="Successfully signed in"
+          subtitle="Automatically redirecting to the dashboard…"
+          autoCloseMs={4000}
+          onAutoClose={() => { setAuthToast(false); isAdmin ? goAdmin() : goShop(); }}
+          onClose={() => setAuthToast(false)}
+          actions={[
+            {
+              label: "Go to the shop",
+              primary: true,
+              onClick: () => { setAuthToast(false); goShop(); },
+              closesToast: false,
+            },
+          ]}
+        />
+      )}
+
+      {cartToast && (
+        <ActionToast
+          icon={ShoppingBag}
+          iconTone="oxblood"
+          iconAnim="bounce"
+          title="Added successfully to the cart"
+          subtitle={cartToast.name}
+          stackIndex={authToast ? 1 : 0}
+          autoCloseMs={5000}
+          onAutoClose={() => setCartToast(null)}
+          onClose={() => setCartToast(null)}
+          actions={[
+            {
+              label: "View Cart",
+              primary: true,
+              onClick: () => { setCartOpen(true); setCartToast(null); },
+              closesToast: false,
+            },
+            {
+              label: "Continue Shopping",
+              primary: false,
+              onClick: () => setCartToast(null),
+              closesToast: false,
+            },
+          ]}
+        />
+      )}
       {lightboxProduct && (
         <Lightbox
           src={lightboxProduct.imageUrl}
@@ -583,7 +654,7 @@ export default function Storefront() {
                 const outOfStock = (live.stock ?? 0) <= 0 || live.available === false;
                 return (
                   <button
-                    onClick={() => { addToCart(live.id); setCartOpen(true); }}
+                    onClick={() => addToCart(live.id)}
                     disabled={outOfStock}
                     className="px-6 py-3 rounded-md font-medium"
                     style={{ background: outOfStock ? "var(--surface-2)" : "var(--brass)", color: outOfStock ? "var(--muted)" : "#1A1520", cursor: outOfStock ? "not-allowed" : "pointer" }}>
@@ -801,5 +872,38 @@ const KEYFRAMES = `
 }
 @media (prefers-reduced-motion: reduce) {
   .wisp { animation: none; }
+}
+
+/* Toast notifications */
+@keyframes toastIn {
+  0% { opacity: 0; transform: translateY(-18px) scale(0.95); }
+  60% { opacity: 1; transform: translateY(3px) scale(1.01); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes toastOut {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(-12px) scale(0.95); }
+}
+.toast-in { animation: toastIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.toast-out { animation: toastOut 0.2s ease-in both; }
+
+@keyframes iconPop {
+  0% { transform: scale(0) rotate(0deg); opacity: 0; }
+  50% { transform: scale(1.2) rotate(0deg); opacity: 1; }
+  75% { transform: scale(0.92); }
+  100% { transform: scale(1); }
+}
+.toast-icon-pop { animation: iconPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s both; }
+
+@keyframes iconBounce {
+  0% { transform: scale(0) rotate(-20deg); opacity: 0; }
+  45% { transform: scale(1.25) rotate(10deg); opacity: 1; }
+  70% { transform: scale(0.9) rotate(-5deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+.toast-icon-bounce { animation: iconBounce 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .toast-in, .toast-out, .toast-icon-pop, .toast-icon-bounce { animation: none; }
 }
 `;
