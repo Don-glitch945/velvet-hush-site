@@ -7,6 +7,7 @@ import {
   onAuthStateChanged,
   signOut,
   updateProfile,
+  sendPasswordResetEmail,
 } from "firebase/auth";
 import {
   doc,
@@ -95,6 +96,8 @@ export function AuthProvider({ children }) {
 
   const logOut = () => signOut(auth);
 
+  const resetPassword = (email) => sendPasswordResetEmail(auth, email);
+
   const value = {
     user,
     profile,
@@ -104,6 +107,7 @@ export function AuthProvider({ children }) {
     signIn,
     signInGoogle,
     logOut,
+    resetPassword,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -1,7 +1,11 @@
-import React, { useState, useMemo } from "react";
-import { ShoppingBag, Flame, Wind, Droplet, Gem, ChevronRight, X, Minus, Plus, Search, ArrowLeft, Wrench, CreditCard, Wallet, Smartphone, Mail, Phone, MapPin, Clock, Send, User, LogOut, ShieldCheck, Ban } from "lucide-react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
+import { ShoppingBag, Flame, ChevronRight, X, Minus, Plus, Search, ArrowLeft, CreditCard, Wallet, Smartphone, Mail, Phone, MapPin, Clock, Send, User, LogOut, ShieldCheck, Ban } from "lucide-react";
 import { useAuth } from "./contexts/AuthContext.jsx";
 import { useProducts } from "./hooks/useProducts.js";
+import { useCategories } from "./hooks/useCategories.js";
+import { useSiteContent } from "./hooks/useSiteContent.js";
+import { DEFAULT_CATEGORIES } from "./data/defaultCategories.js";
+import { resolveIcon } from "./lib/icons.js";
 import AuthModal from "./components/AuthModal.jsx";
 import AdminPanel from "./components/AdminPanel.jsx";
 
@@ -18,15 +22,6 @@ import AdminPanel from "./components/AdminPanel.jsx";
    Display face: Fraunces (serif, warm, a little eccentric)
    Body face:    Inter
 --------------------------------------------------------- */
-
-const CATEGORIES = [
-  { id: "cigars", name: "Cigars", icon: Flame, blurb: "Hand-rolled, slow-cured, built for the long pour." },
-  { id: "vapes", name: "Vape Pens", icon: Wind, blurb: "Clean hits, discreet builds, all-day batteries." },
-  { id: "glass", name: "Glass & Pipes", icon: Gem, blurb: "Hand-blown pieces, small-batch, no two alike." },
-  { id: "lubricants", name: "Lubricants", icon: Droplet, blurb: "Body-safe formulas for every kind of night." },
-  { id: "intimacy", name: "Adult Toys", icon: Gem, blurb: "Considered design, quiet packaging, discreet shipping." },
-  { id: "tools", name: "Tools & Accessories", icon: Wrench, blurb: "Grinders, lighters, papers, and cleaning kits." },
-];
 
 function Pattern({ type, tone }) {
   const stroke = tone === "brass" ? "var(--brass)" : "var(--oxblood)";
@@ -62,9 +57,10 @@ function Pattern({ type, tone }) {
   );
 }
 
-function ProductCard({ product, onOpen, onZoom }) {
-  const tone = product.cat === "lubricants" || product.cat === "intimacy" ? "oxblood" : "brass";
-  const CatIcon = CATEGORIES.find(c => c.id === product.cat)?.icon;
+function ProductCard({ product, categories, onOpen, onZoom }) {
+  const cat = categories.find(c => c.id === product.cat);
+  const tone = cat?.tone === "oxblood" ? "oxblood" : "brass";
+  const CatIcon = cat?.icon;
   const outOfStock = (product.stock ?? 0) <= 0 || product.available === false;
   return (
     <button onClick={() => onOpen(product)} className="group text-left rounded-lg overflow-hidden border transition-all duration-300"
@@ -97,7 +93,7 @@ function ProductCard({ product, onOpen, onZoom }) {
         )}
       </div>
       <div className="p-4">
-        <p className="text-xs uppercase tracking-widest mb-1" style={{ color: "var(--muted)" }}>{CATEGORIES.find(c => c.id === product.cat)?.name}</p>
+        <p className="text-xs uppercase tracking-widest mb-1" style={{ color: "var(--muted)" }}>{cat?.name}</p>
         <h3 className="font-serif text-lg mb-1" style={{ color: "var(--ink)" }}>{product.name}</h3>
         <p className="text-sm mb-3" style={{ color: "var(--muted)" }}>{product.note}</p>
         <div className="flex items-center justify-between">
@@ -168,9 +164,43 @@ export default function Storefront() {
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [lightboxProduct, setLightboxProduct] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const searchBoxRef = useRef(null);
 
   const { user, profile, isAdmin, logOut } = useAuth();
   const { products } = useProducts();
+  const { categories: fsCategories } = useCategories();
+  const { content: contactContent } = useSiteContent("contact");
+  const { content: aboutContent } = useSiteContent("about");
+
+  // Firestore categories win once the admin has added any; until then,
+  // fall back to the built-in defaults so the storefront isn't empty.
+  const CATEGORIES = useMemo(() => {
+    const source = fsCategories.length > 0 ? fsCategories : DEFAULT_CATEGORIES;
+    return source.map(c => ({ ...c, icon: resolveIcon(c.icon) }));
+  }, [fsCategories]);
+
+  const searchResults = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return [];
+    return products.filter(p =>
+      p.name?.toLowerCase().includes(q) ||
+      p.note?.toLowerCase().includes(q) ||
+      CATEGORIES.find(c => c.id === p.cat)?.name?.toLowerCase().includes(q)
+    ).slice(0, 6);
+  }, [searchQuery, products, CATEGORIES]);
+
+  // Close the search dropdown on outside click.
+  useEffect(() => {
+    if (!searchOpen) return;
+    const onClick = (e) => {
+      if (searchBoxRef.current && !searchBoxRef.current.contains(e.target)) setSearchOpen(false);
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [searchOpen]);
 
   const cartCount = Object.values(cart).reduce((a, b) => a + b, 0);
   const cartTotal = useMemo(
@@ -222,9 +252,11 @@ export default function Storefront() {
   });
 
   const goCategory = (id) => { setActiveCat(id); setPage("category"); window.scrollTo?.(0, 0); };
-  const goProduct = (p) => { setActiveProduct(p); setPage("product"); window.scrollTo?.(0, 0); };
+  const goProduct = (p) => { setActiveProduct(p); setPage("product"); window.scrollTo?.(0, 0); setSearchOpen(false); setSearchQuery(""); setMobileSearchOpen(false); };
   const goHome = () => { setPage("home"); window.scrollTo?.(0, 0); };
+  const goShop = () => { setPage("shop"); window.scrollTo?.(0, 0); };
   const goContact = () => { setPage("contact"); window.scrollTo?.(0, 0); };
+  const goAbout = () => { setPage("about"); window.scrollTo?.(0, 0); };
   const goAdmin = () => { setPage("admin"); setUserMenuOpen(false); window.scrollTo?.(0, 0); };
   const [payment, setPayment] = useState("card");
 
@@ -271,9 +303,50 @@ export default function Storefront() {
             {CATEGORIES.map(c => (
               <button key={c.id} onClick={() => goCategory(c.id)} className="hover:opacity-70 transition-opacity" style={{ color: "var(--muted)" }}>{c.name}</button>
             ))}
+            <button onClick={goAbout} className="hover:opacity-70 transition-opacity" style={{ color: "var(--muted)" }}>About</button>
             <button onClick={goContact} className="hover:opacity-70 transition-opacity" style={{ color: "var(--muted)" }}>Contact</button>
           </nav>
           <div className="flex items-center gap-2">
+            <div ref={searchBoxRef} className="relative hidden sm:block">
+              <div className="flex items-center gap-2 px-3 py-2 rounded-md" style={{ background: "var(--surface)" }}>
+                <Search size={14} style={{ color: "var(--muted)" }} />
+                <input
+                  value={searchQuery}
+                  onChange={(e) => { setSearchQuery(e.target.value); setSearchOpen(true); }}
+                  onFocus={() => searchQuery && setSearchOpen(true)}
+                  placeholder="Search products…"
+                  className="w-36 md:w-48 bg-transparent text-sm outline-none"
+                  style={{ color: "var(--ink)" }}
+                />
+                {searchQuery && (
+                  <button onClick={() => { setSearchQuery(""); setSearchOpen(false); }} aria-label="Clear search">
+                    <X size={13} style={{ color: "var(--muted)" }} />
+                  </button>
+                )}
+              </div>
+              {searchOpen && searchQuery.trim() && (
+                <div className="absolute right-0 mt-2 w-72 rounded-md border z-30 overflow-hidden" style={{ borderColor: "var(--border)", background: "var(--surface)" }}>
+                  {searchResults.length === 0 ? (
+                    <p className="px-4 py-3 text-sm" style={{ color: "var(--muted)" }}>No products match "{searchQuery}".</p>
+                  ) : (
+                    searchResults.map(p => (
+                      <button key={p.id} onClick={() => goProduct(p)} className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:opacity-80 border-b last:border-b-0" style={{ borderColor: "var(--border)" }}>
+                        <div className="w-10 h-10 rounded-md overflow-hidden shrink-0 flex items-center justify-center" style={{ background: "var(--surface-2)" }}>
+                          {p.imageUrl ? <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" /> : <div className="w-6 h-6"><Pattern type={p.pattern} tone="brass" /></div>}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm truncate" style={{ color: "var(--ink)" }}>{p.name}</p>
+                          <p className="text-xs" style={{ color: "var(--muted)" }}>${p.price}</p>
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+            <button onClick={() => setMobileSearchOpen(o => !o)} className="p-2 rounded-md sm:hidden" style={{ background: "var(--surface)" }} aria-label="Search">
+              <Search size={16} style={{ color: "var(--ink)" }} />
+            </button>
             {user ? (
               <div className="relative">
                 <button onClick={() => setUserMenuOpen(o => !o)} className="flex items-center gap-2 px-2.5 py-2 rounded-md" style={{ background: "var(--surface)" }}>
@@ -316,6 +389,45 @@ export default function Storefront() {
             </button>
           </div>
         </div>
+        {mobileSearchOpen && (
+          <div className="sm:hidden px-5 pb-4">
+            <div className="flex items-center gap-2 px-3 py-2 rounded-md" style={{ background: "var(--surface)" }}>
+              <Search size={14} style={{ color: "var(--muted)" }} />
+              <input
+                autoFocus
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search products…"
+                className="flex-1 bg-transparent text-sm outline-none"
+                style={{ color: "var(--ink)" }}
+              />
+              {searchQuery && (
+                <button onClick={() => setSearchQuery("")} aria-label="Clear search">
+                  <X size={13} style={{ color: "var(--muted)" }} />
+                </button>
+              )}
+            </div>
+            {searchQuery.trim() && (
+              <div className="mt-2 rounded-md border overflow-hidden" style={{ borderColor: "var(--border)", background: "var(--surface)" }}>
+                {searchResults.length === 0 ? (
+                  <p className="px-4 py-3 text-sm" style={{ color: "var(--muted)" }}>No products match "{searchQuery}".</p>
+                ) : (
+                  searchResults.map(p => (
+                    <button key={p.id} onClick={() => goProduct(p)} className="w-full flex items-center gap-3 px-3 py-2.5 text-left border-b last:border-b-0" style={{ borderColor: "var(--border)" }}>
+                      <div className="w-10 h-10 rounded-md overflow-hidden shrink-0 flex items-center justify-center" style={{ background: "var(--surface-2)" }}>
+                        {p.imageUrl ? <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" /> : <div className="w-6 h-6"><Pattern type={p.pattern} tone="brass" /></div>}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm truncate" style={{ color: "var(--ink)" }}>{p.name}</p>
+                        <p className="text-xs" style={{ color: "var(--muted)" }}>${p.price}</p>
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </header>
 
       {authModalOpen && <AuthModal onClose={() => setAuthModalOpen(false)} />}
@@ -340,7 +452,7 @@ export default function Storefront() {
               <p className="max-w-md text-base mb-8" style={{ color: "var(--muted)" }}>
                 Cigars, glass, vape, and intimacy — sourced from small makers who care about the last detail as much as the first.
               </p>
-              <button onClick={() => goCategory("cigars")} className="px-6 py-3 rounded-md font-medium" style={{ background: "var(--brass)", color: "#1A1520" }}>
+              <button onClick={goShop} className="px-6 py-3 rounded-md font-medium" style={{ background: "var(--brass)", color: "#1A1520" }}>
                 Browse the Shop
               </button>
             </div>
@@ -370,10 +482,46 @@ export default function Storefront() {
               <h2 className="font-serif text-2xl" style={{ fontFamily: "Fraunces, serif" }}>New This Week</h2>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {products.slice(0, 8).map(p => <ProductCard key={p.id} product={p} onOpen={goProduct} onZoom={setLightboxProduct} />)}
+              {products.slice(0, 8).map(p => <ProductCard key={p.id} product={p} categories={CATEGORIES} onOpen={goProduct} onZoom={setLightboxProduct} />)}
             </div>
           </section>
         </>
+      )}
+
+      {page === "shop" && (
+        <section className="max-w-6xl mx-auto px-5 py-12">
+          <button onClick={goHome} className="flex items-center gap-1 text-sm mb-6" style={{ color: "var(--muted)" }}>
+            <ArrowLeft size={14} /> Back
+          </button>
+          <h2 className="font-serif text-3xl mb-2" style={{ fontFamily: "Fraunces, serif" }}>Shop All</h2>
+          <p className="text-sm mb-10" style={{ color: "var(--muted)" }}>Every category, all in one place.</p>
+          <div className="space-y-14">
+            {CATEGORIES.map(c => {
+              const catProducts = products.filter(p => p.cat === c.id);
+              const Icon = c.icon;
+              return (
+                <div key={c.id}>
+                  <div className="flex items-center justify-between mb-5">
+                    <div className="flex items-center gap-2">
+                      <Icon size={18} style={{ color: c.tone === "oxblood" ? "var(--oxblood)" : "var(--brass)" }} />
+                      <h3 className="font-serif text-xl" style={{ fontFamily: "Fraunces, serif" }}>{c.name}</h3>
+                    </div>
+                    <button onClick={() => goCategory(c.id)} className="text-xs flex items-center gap-1 hover:opacity-70" style={{ color: "var(--muted)" }}>
+                      View all <ChevronRight size={13} />
+                    </button>
+                  </div>
+                  {catProducts.length === 0 ? (
+                    <p className="text-sm" style={{ color: "var(--muted)" }}>No products in this category yet.</p>
+                  ) : (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      {catProducts.slice(0, 4).map(p => <ProductCard key={p.id} product={p} categories={CATEGORIES} onOpen={goProduct} onZoom={setLightboxProduct} />)}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
       )}
 
       {page === "category" && activeCat && (
@@ -384,7 +532,7 @@ export default function Storefront() {
           <h2 className="font-serif text-3xl mb-2" style={{ fontFamily: "Fraunces, serif" }}>{CATEGORIES.find(c => c.id === activeCat)?.name}</h2>
           <p className="text-sm mb-8" style={{ color: "var(--muted)" }}>{CATEGORIES.find(c => c.id === activeCat)?.blurb}</p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {products.filter(p => p.cat === activeCat).map(p => <ProductCard key={p.id} product={p} onOpen={goProduct} onZoom={setLightboxProduct} />)}
+            {products.filter(p => p.cat === activeCat).map(p => <ProductCard key={p.id} product={p} categories={CATEGORIES} onOpen={goProduct} onZoom={setLightboxProduct} />)}
           </div>
         </section>
       )}
@@ -408,11 +556,11 @@ export default function Storefront() {
                   <img src={activeProduct.imageUrl} alt={activeProduct.name} className="w-full h-full object-cover" />
                 </div>
               ) : (
-                <div className="w-40 h-40"><Pattern type={activeProduct.pattern} tone={activeProduct.cat === "lubricants" || activeProduct.cat === "intimacy" ? "oxblood" : "brass"} /></div>
+                <div className="w-40 h-40"><Pattern type={activeProduct.pattern} tone={CATEGORIES.find(c => c.id === activeProduct.cat)?.tone === "oxblood" ? "oxblood" : "brass"} /></div>
               )}
               {(() => {
                 const CatIcon = CATEGORIES.find(c => c.id === activeProduct.cat)?.icon;
-                const tone = activeProduct.cat === "lubricants" || activeProduct.cat === "intimacy" ? "oxblood" : "brass";
+                const tone = CATEGORIES.find(c => c.id === activeProduct.cat)?.tone === "oxblood" ? "oxblood" : "brass";
                 return CatIcon ? (
                   <div className="absolute top-4 left-4 w-9 h-9 rounded-full flex items-center justify-center" style={{ background: "var(--surface-2)" }}>
                     <CatIcon size={16} style={{ color: tone === "brass" ? "var(--brass)" : "var(--oxblood)" }} />
@@ -456,23 +604,23 @@ export default function Storefront() {
               <div className="flex items-start gap-3">
                 <MapPin size={18} style={{ color: "var(--brass)" }} className="mt-0.5" />
                 <div>
-                  <p className="text-sm" style={{ color: "var(--ink)" }}>118 Lantern Row, Suite 4</p>
-                  <p className="text-sm" style={{ color: "var(--muted)" }}>Austin, TX 78701</p>
+                  <p className="text-sm" style={{ color: "var(--ink)" }}>{contactContent?.address1 || "118 Lantern Row, Suite 4"}</p>
+                  <p className="text-sm" style={{ color: "var(--muted)" }}>{contactContent?.address2 || "Austin, TX 78701"}</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
                 <Mail size={18} style={{ color: "var(--brass)" }} className="mt-0.5" />
-                <p className="text-sm" style={{ color: "var(--ink)" }}>hello@velvethush.shop</p>
+                <p className="text-sm" style={{ color: "var(--ink)" }}>{contactContent?.email || "hello@velvethush.shop"}</p>
               </div>
               <div className="flex items-start gap-3">
                 <Phone size={18} style={{ color: "var(--brass)" }} className="mt-0.5" />
-                <p className="text-sm" style={{ color: "var(--ink)" }}>(512) 555-0148</p>
+                <p className="text-sm" style={{ color: "var(--ink)" }}>{contactContent?.phone || "(512) 555-0148"}</p>
               </div>
               <div className="flex items-start gap-3">
                 <Clock size={18} style={{ color: "var(--brass)" }} className="mt-0.5" />
                 <div>
-                  <p className="text-sm" style={{ color: "var(--ink)" }}>Mon–Fri, 10am–6pm CT</p>
-                  <p className="text-sm" style={{ color: "var(--muted)" }}>Replies within one business day</p>
+                  <p className="text-sm" style={{ color: "var(--ink)" }}>{contactContent?.hoursLine1 || "Mon–Fri, 10am–6pm CT"}</p>
+                  <p className="text-sm" style={{ color: "var(--muted)" }}>{contactContent?.hoursLine2 || "Replies within one business day"}</p>
                 </div>
               </div>
             </div>
@@ -485,6 +633,23 @@ export default function Storefront() {
               </button>
               <p className="text-xs pt-1" style={{ color: "var(--muted)" }}>Demo form — messages aren't actually sent.</p>
             </form>
+          </div>
+        </section>
+      )}
+
+      {page === "about" && (
+        <section className="max-w-3xl mx-auto px-5 py-12">
+          <button onClick={goHome} className="flex items-center gap-1 text-sm mb-6" style={{ color: "var(--muted)" }}>
+            <ArrowLeft size={14} /> Back
+          </button>
+          <h2 className="font-serif text-3xl mb-6" style={{ fontFamily: "Fraunces, serif" }}>
+            {aboutContent?.heading || "About Velvet Hush"}
+          </h2>
+          <div className="space-y-4 text-sm leading-relaxed" style={{ color: "var(--muted)" }}>
+            {(aboutContent?.body || "Velvet Hush started as a small, considered alternative to the fluorescent-lit shops we grew up with. Every product on this site is chosen by hand — from small-batch glassblowers to formulators who actually read the label before they sell it. We ship everything in unmarked packaging, because what you buy is nobody's business but yours.")
+              .split("\n")
+              .filter(Boolean)
+              .map((para, i) => <p key={i}>{para}</p>)}
           </div>
         </section>
       )}
@@ -523,7 +688,7 @@ export default function Storefront() {
                 return (
                   <div key={id} className="flex gap-3 items-center">
                     <div className="w-14 h-14 rounded-md flex items-center justify-center shrink-0" style={{ background: "var(--surface-2)" }}>
-                      <div className="w-8 h-8"><Pattern type={p.pattern} tone={p.cat === "lubricants" || p.cat === "intimacy" ? "oxblood" : "brass"} /></div>
+                      <div className="w-8 h-8"><Pattern type={p.pattern} tone={CATEGORIES.find(c => c.id === p.cat)?.tone === "oxblood" ? "oxblood" : "brass"} /></div>
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm truncate">{p.name}</p>
@@ -591,9 +756,10 @@ export default function Storefront() {
       <footer className="border-t mt-8" style={{ borderColor: "var(--border)" }}>
         <div className="max-w-6xl mx-auto px-5 py-10">
           <div className="flex flex-wrap gap-8 mb-8 text-xs" style={{ color: "var(--muted)" }}>
-            <span className="flex items-center gap-2"><MapPin size={13} style={{ color: "var(--brass)" }} /> Austin, TX</span>
-            <span className="flex items-center gap-2"><Mail size={13} style={{ color: "var(--brass)" }} /> hello@velvethush.shop</span>
-            <span className="flex items-center gap-2"><Phone size={13} style={{ color: "var(--brass)" }} /> (512) 555-0148</span>
+            <span className="flex items-center gap-2"><MapPin size={13} style={{ color: "var(--brass)" }} /> {contactContent?.address2 || "Austin, TX"}</span>
+            <span className="flex items-center gap-2"><Mail size={13} style={{ color: "var(--brass)" }} /> {contactContent?.email || "hello@velvethush.shop"}</span>
+            <span className="flex items-center gap-2"><Phone size={13} style={{ color: "var(--brass)" }} /> {contactContent?.phone || "(512) 555-0148"}</span>
+            <button onClick={goAbout} className="underline hover:opacity-70">About</button>
             <button onClick={goContact} className="underline hover:opacity-70">Contact page</button>
           </div>
           <div className="text-xs leading-relaxed" style={{ color: "var(--muted)" }}>

@@ -9,17 +9,20 @@ function friendlyAuthError(err) {
   if (code.includes("weak-password")) return "Password should be at least 6 characters.";
   if (code.includes("invalid-email")) return "That doesn't look like a valid email.";
   if (code.includes("popup-closed-by-user")) return "Google sign-in was closed before finishing.";
+  if (code.includes("missing-email")) return "Enter your email first.";
+  if (code.includes("too-many-requests")) return "Too many attempts — please wait a bit and try again.";
   return err?.message || "Something went wrong. Please try again.";
 }
 
 export default function AuthModal({ onClose }) {
-  const { signIn, signUp, signInGoogle } = useAuth();
-  const [mode, setMode] = useState("signin"); // "signin" | "signup"
+  const { signIn, signUp, signInGoogle, resetPassword } = useAuth();
+  const [mode, setMode] = useState("signin"); // "signin" | "signup" | "reset"
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -32,6 +35,20 @@ export default function AuthModal({ onClose }) {
         await signIn(email, password);
       }
       onClose();
+    } catch (err) {
+      setError(friendlyAuthError(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const submitReset = async (e) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    try {
+      await resetPassword(email);
+      setResetSent(true);
     } catch (err) {
       setError(friendlyAuthError(err));
     } finally {
@@ -61,12 +78,64 @@ export default function AuthModal({ onClose }) {
         </button>
 
         <h2 className="font-serif text-2xl mb-1" style={{ fontFamily: "Fraunces, serif", color: "var(--ink)" }}>
-          {mode === "signup" ? "Create account" : "Sign in"}
+          {mode === "signup" ? "Create account" : mode === "reset" ? "Reset password" : "Sign in"}
         </h2>
         <p className="text-sm mb-6" style={{ color: "var(--muted)" }}>
-          {mode === "signup" ? "Takes about 10 seconds." : "Welcome back to Velvet Hush."}
+          {mode === "signup"
+            ? "Takes about 10 seconds."
+            : mode === "reset"
+            ? "We'll email you a link to set a new password."
+            : "Welcome back to Velvet Hush."}
         </p>
 
+        {mode === "reset" ? (
+          resetSent ? (
+            <div className="space-y-4">
+              <p className="text-sm" style={{ color: "var(--ink)" }}>
+                If an account exists for <span style={{ color: "var(--brass)" }}>{email}</span>, a reset link is on its way. Check your inbox (and spam folder).
+              </p>
+              <button
+                onClick={() => { setMode("signin"); setResetSent(false); }}
+                className="w-full py-3 rounded-md font-medium border"
+                style={{ borderColor: "var(--border)", color: "var(--ink)", background: "var(--surface-2)" }}
+              >
+                Back to sign in
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={submitReset} className="space-y-3">
+              <div className="flex items-center gap-2 px-3 rounded-md border" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
+                <Mail size={15} style={{ color: "var(--muted)" }} />
+                <input
+                  required
+                  type="email"
+                  placeholder="Email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="flex-1 py-3 bg-transparent text-sm outline-none"
+                  style={{ color: "var(--ink)" }}
+                />
+              </div>
+              {error && <p className="text-xs" style={{ color: "var(--oxblood)" }}>{error}</p>}
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3 rounded-md font-medium"
+                style={{ background: "var(--brass)", color: "#1A1520", opacity: loading ? 0.7 : 1 }}
+              >
+                {loading ? "Sending…" : "Send reset link"}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setMode("signin"); setError(null); }}
+                className="w-full text-center text-xs underline"
+                style={{ color: "var(--muted)" }}
+              >
+                Back to sign in
+              </button>
+            </form>
+          )
+        ) : (
         <form onSubmit={submit} className="space-y-3">
           {mode === "signup" && (
             <div className="flex items-center gap-2 px-3 rounded-md border" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
@@ -109,6 +178,17 @@ export default function AuthModal({ onClose }) {
 
           {error && <p className="text-xs" style={{ color: "var(--oxblood)" }}>{error}</p>}
 
+          {mode === "signin" && (
+            <button
+              type="button"
+              onClick={() => { setMode("reset"); setError(null); setResetSent(false); }}
+              className="text-xs underline"
+              style={{ color: "var(--muted)" }}
+            >
+              Forgot password?
+            </button>
+          )}
+
           <button
             type="submit"
             disabled={loading}
@@ -118,7 +198,10 @@ export default function AuthModal({ onClose }) {
             {loading ? "Please wait…" : mode === "signup" ? "Create account" : "Sign in"}
           </button>
         </form>
+        )}
 
+        {mode !== "reset" && (
+        <>
         <div className="flex items-center gap-3 my-5">
           <div className="flex-1 h-px" style={{ background: "var(--border)" }} />
           <span className="text-xs" style={{ color: "var(--muted)" }}>or</span>
@@ -146,6 +229,8 @@ export default function AuthModal({ onClose }) {
             {mode === "signup" ? "Sign in" : "Create one"}
           </button>
         </p>
+        </>
+        )}
       </div>
     </div>
   );
