@@ -1,14 +1,16 @@
 import React, { useState, useMemo, useRef, useEffect } from "react";
-import { ShoppingBag, Flame, ChevronRight, X, Minus, Plus, Search, ArrowLeft, CreditCard, Wallet, Smartphone, Mail, Phone, MapPin, Clock, Send, User, LogOut, ShieldCheck, Ban, CheckCircle2, Menu } from "lucide-react";
+import { ShoppingBag, Flame, ChevronRight, X, Minus, Plus, Search, ArrowLeft, CreditCard, Wallet, Smartphone, Mail, Phone, MapPin, Clock, Send, User, LogOut, ShieldCheck, Ban, CheckCircle2, Menu, Package, Settings } from "lucide-react";
 import { useAuth } from "./contexts/AuthContext.jsx";
 import { useProducts } from "./hooks/useProducts.js";
 import { useCart } from "./hooks/useCart.js";
 import { useCategories } from "./hooks/useCategories.js";
 import { useSiteContent } from "./hooks/useSiteContent.js";
+import { useOrders } from "./hooks/useOrders.js";
 import { DEFAULT_CATEGORIES } from "./data/defaultCategories.js";
 import { resolveIcon } from "./lib/icons.js";
 import AuthModal from "./components/AuthModal.jsx";
 import AdminPanel from "./components/AdminPanel.jsx";
+import AccountPanel from "./components/AccountPanel.jsx";
 import ActionToast from "./components/ActionToast.jsx";
 import SideMenu from "./components/SideMenu.jsx";
 import SettingsModal from "./components/SettingsModal.jsx";
@@ -183,6 +185,7 @@ export default function Storefront() {
   const { content: contactContent } = useSiteContent("contact");
   const { content: aboutContent } = useSiteContent("about");
   const { content: footerContent } = useSiteContent("footer");
+  const { orders, loading: ordersLoading } = useOrders(user);
 
   // Firestore categories win once the admin has added any; until then,
   // fall back to the built-in defaults so the storefront isn't empty.
@@ -268,6 +271,7 @@ export default function Storefront() {
   const goContact = () => { setPage("contact"); window.scrollTo?.(0, 0); };
   const goAbout = () => { setPage("about"); window.scrollTo?.(0, 0); };
   const goAdmin = () => { setPage("admin"); setUserMenuOpen(false); window.scrollTo?.(0, 0); };
+  const goAccount = () => { setPage("account"); setUserMenuOpen(false); setMenuOpen(false); window.scrollTo?.(0, 0); };
   const [payment, setPayment] = useState("card");
 
   const handleAuthSuccess = () => {
@@ -314,7 +318,7 @@ export default function Storefront() {
           <div className="flex items-center gap-8 min-w-0">
             <button
               onClick={() => setMenuOpen(true)}
-              className="p-2 rounded-md shrink-0"
+              className="p-2 rounded-md shrink-0 md:hidden"
               style={{ background: "var(--surface)" }}
               aria-label="Open menu"
             >
@@ -390,6 +394,12 @@ export default function Storefront() {
                         <p className="text-xs truncate" style={{ color: "var(--muted)" }}>{user.email}</p>
                         <p className="text-xs mt-1" style={{ color: "var(--brass)" }}>Balance: ${(profile?.balance ?? 0).toFixed(2)}</p>
                       </div>
+                      <button onClick={goAccount} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left hover:opacity-80" style={{ color: "var(--ink)" }}>
+                        <Package size={14} style={{ color: "var(--brass)" }} /> My Account &amp; Orders
+                      </button>
+                      <button onClick={() => { setUserMenuOpen(false); setSettingsOpen(true); }} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left hover:opacity-80" style={{ color: "var(--ink)" }}>
+                        <Settings size={14} style={{ color: "var(--muted)" }} /> Settings
+                      </button>
                       {isAdmin && (
                         <button onClick={goAdmin} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left hover:opacity-80" style={{ color: "var(--ink)" }}>
                           <ShieldCheck size={14} style={{ color: "var(--brass)" }} /> Admin Panel
@@ -478,6 +488,7 @@ export default function Storefront() {
         profile={profile}
         isAdmin={isAdmin}
         onAdmin={() => { setMenuOpen(false); goAdmin(); }}
+        onAccount={() => { setMenuOpen(false); goAccount(); }}
         onSettings={() => { setMenuOpen(false); setSettingsOpen(true); }}
         onLogout={() => { logOut(); setMenuOpen(false); }}
         onSignIn={() => { setMenuOpen(false); setAuthModalOpen(true); }}
@@ -759,6 +770,28 @@ export default function Storefront() {
               .map((para, i) => <p key={i}>{para}</p>)}
           </div>
         </section>
+      )}
+
+      {page === "account" && (
+        user ? (
+          <AccountPanel
+            user={user}
+            profile={profile}
+            orders={orders}
+            ordersLoading={ordersLoading}
+            onBack={goHome}
+            onSettings={() => setSettingsOpen(true)}
+          />
+        ) : (
+          <section className="max-w-lg mx-auto px-5 py-24 text-center">
+            <User size={28} className="mx-auto mb-4" style={{ color: "var(--muted)" }} />
+            <h2 className="font-serif text-2xl mb-2" style={{ fontFamily: "Fraunces, serif" }}>Sign in to view your account</h2>
+            <p className="text-sm mb-6" style={{ color: "var(--muted)" }}>Your balance and order history live here once you're signed in.</p>
+            <button onClick={() => setAuthModalOpen(true)} className="px-5 py-2.5 rounded-md text-sm font-medium" style={{ background: "var(--brass)", color: "#1A1520" }}>
+              Sign In
+            </button>
+          </section>
+        )
       )}
 
       {page === "admin" && (

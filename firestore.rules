@@ -52,6 +52,20 @@ service cloud.firestore {
       allow read, write: if isSelf(uid);
     }
 
+    // ---- orders/{orderId} ----
+    // Order history, written server-side by the checkout/payment
+    // webhook using the Admin SDK once a payment actually completes
+    // (Admin SDK writes bypass these rules entirely, same as how
+    // products/categories get seeded). From the client, a signed-in
+    // shopper can only read their OWN orders (matched by the `uid`
+    // field on the order doc); admins can read and manage any order.
+    // No client-side create/update/delete — that's intentionally left
+    // to the trusted server process and to admins for corrections.
+    match /orders/{orderId} {
+      allow get, list: if isSignedIn() && (resource.data.uid == request.auth.uid || isAdmin());
+      allow create, update, delete: if isAdmin();
+    }
+
     // ---- products/{productId} ----
     // Public read (storefront works for signed-out visitors too).
     // Only admins can create/update/delete products.

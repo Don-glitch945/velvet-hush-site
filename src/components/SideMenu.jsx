@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { X, ChevronDown, Tag, Info, Mail, Settings, LogOut, LogIn, ShieldCheck } from "lucide-react";
+import { X, ChevronDown, Tag, Info, Mail, Settings, LogOut, LogIn, ShieldCheck, Package } from "lucide-react";
 
 // Slides in from the right edge of the screen, opened via the hamburger
 // icon in the top-left of the header. Mirrors the cart drawer's layout
@@ -18,6 +18,7 @@ export default function SideMenu({
   onSettings,
   onLogout,
   onSignIn,
+  onAccount,
 }) {
   const [visible, setVisible] = useState(false);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
@@ -104,7 +105,11 @@ export default function SideMenu({
               <div className="px-3 py-2">
                 <p className="text-sm truncate" style={{ color: "var(--ink)" }}>{profile?.displayName || "Customer"}</p>
                 <p className="text-xs truncate" style={{ color: "var(--muted)" }}>{user.email}</p>
+                <p className="text-xs mt-1" style={{ color: "var(--brass)" }}>Balance: ${(profile?.balance ?? 0).toFixed(2)}</p>
               </div>
+              <button onClick={onAccount} className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-left rounded-md hover:opacity-80" style={{ color: "var(--ink)" }}>
+                <Package size={15} style={{ color: "var(--brass)" }} /> My Account &amp; Orders
+              </button>
               {isAdmin && (
                 <button onClick={onAdmin} className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-left rounded-md hover:opacity-80" style={{ color: "var(--ink)" }}>
                   <ShieldCheck size={15} style={{ color: "var(--brass)" }} /> Admin Panel
