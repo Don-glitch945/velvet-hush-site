@@ -43,6 +43,15 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // ---- carts/{uid} ----
+    // Each signed-in shopper's saved cart, keyed by their own uid.
+    // Only that user can ever read or write it — carts aren't visible
+    // to other users, and there's no signed-out access since a guest
+    // cart never leaves the browser.
+    match /carts/{uid} {
+      allow read, write: if isSelf(uid);
+    }
+
     // ---- products/{productId} ----
     // Public read (storefront works for signed-out visitors too).
     // Only admins can create/update/delete products.

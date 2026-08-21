@@ -191,14 +191,14 @@ function ProductsTab() {
           <button onClick={loadDemo} disabled={seeding}
             className="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium"
             style={{ background: "var(--surface-2)", color: "var(--brass)", border: "1px solid var(--border)" }}>
-            <Database size={14} /> {seeding ? "Loading…" : "Load demo catalog (19 items)"}
+            <Database size={14} /> {seeding ? "Loading…" : "Load starter catalog (19 items)"}
           </button>
         )}
       </div>
 
       {loading && <p className="text-sm" style={{ color: "var(--muted)" }}>Loading products…</p>}
       {!loading && products.length === 0 && (
-        <p className="text-sm" style={{ color: "var(--muted)" }}>No products yet. Add one above, or load the demo catalog to get started.</p>
+        <p className="text-sm" style={{ color: "var(--muted)" }}>No products yet. Add one above, or load the starter catalog to get started.</p>
       )}
       {!loading && products.length > 0 && (
         <div className="overflow-x-auto">
@@ -589,7 +589,7 @@ function FooterContentForm() {
   const [saving, setSaving] = useState(false);
 
   const draft = form || {
-    disclaimer: content?.disclaimer || "Velvet Hush — demo storefront. No real orders are placed. Must be 21+ to purchase tobacco, vape, and adult products; ID checked on delivery. Not for sale where prohibited by law.",
+    disclaimer: content?.disclaimer || "Must be 21+ to purchase tobacco, vape, and adult products; ID checked on delivery. Not for sale where prohibited by law.",
     copyright: content?.copyright || "© 2026 Velvet Hush. All rights reserved.",
   };
   const set = (patch) => setForm({ ...draft, ...patch });

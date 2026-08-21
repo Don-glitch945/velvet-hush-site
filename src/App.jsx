@@ -2,6 +2,7 @@ import React, { useState, useMemo, useRef, useEffect } from "react";
 import { ShoppingBag, Flame, ChevronRight, X, Minus, Plus, Search, ArrowLeft, CreditCard, Wallet, Smartphone, Mail, Phone, MapPin, Clock, Send, User, LogOut, ShieldCheck, Ban, CheckCircle2, Menu } from "lucide-react";
 import { useAuth } from "./contexts/AuthContext.jsx";
 import { useProducts } from "./hooks/useProducts.js";
+import { useCart } from "./hooks/useCart.js";
 import { useCategories } from "./hooks/useCategories.js";
 import { useSiteContent } from "./hooks/useSiteContent.js";
 import { DEFAULT_CATEGORIES } from "./data/defaultCategories.js";
@@ -160,7 +161,6 @@ export default function Storefront() {
   const [page, setPage] = useState("home");
   const [activeCat, setActiveCat] = useState(null);
   const [activeProduct, setActiveProduct] = useState(null);
-  const [cart, setCart] = useState({});
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState(null);
@@ -177,6 +177,7 @@ export default function Storefront() {
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const { user, profile, isAdmin, logOut } = useAuth();
+  const { cart, setCart } = useCart(user);
   const { products } = useProducts();
   const { categories: fsCategories } = useCategories();
   const { content: contactContent } = useSiteContent("contact");
@@ -297,7 +298,6 @@ export default function Storefront() {
             style={{ background: dobCheck ? "var(--brass)" : "var(--surface-2)", color: dobCheck ? "#1A1520" : "var(--muted)", cursor: dobCheck ? "pointer" : "not-allowed" }}>
             Enter Site
           </button>
-          <p className="text-xs mt-4" style={{ color: "var(--muted)" }}>Demo storefront — no real transactions occur here.</p>
         </div>
       </div>
     );
@@ -739,7 +739,6 @@ export default function Storefront() {
               <button type="submit" className="flex items-center gap-2 px-6 py-3 rounded-md font-medium" style={{ background: "var(--brass)", color: "#1A1520" }}>
                 <Send size={14} /> Send Message
               </button>
-              <p className="text-xs pt-1" style={{ color: "var(--muted)" }}>Demo form — messages aren't actually sent.</p>
             </form>
           </div>
         </section>
@@ -875,7 +874,7 @@ export default function Storefront() {
             <button onClick={goContact} className="underline hover:opacity-70">Contact page</button>
           </div>
           <div className="text-xs leading-relaxed" style={{ color: "var(--muted)" }}>
-            <p className="mb-2">{footerContent?.disclaimer || "Velvet Hush — demo storefront. No real orders are placed. Must be 21+ to purchase tobacco, vape, and adult products; ID checked on delivery. Not for sale where prohibited by law."}</p>
+            <p className="mb-2">{footerContent?.disclaimer || "Must be 21+ to purchase tobacco, vape, and adult products; ID checked on delivery. Not for sale where prohibited by law."}</p>
             <p>{footerContent?.copyright || "© 2026 Velvet Hush. All rights reserved."}</p>
           </div>
         </div>
