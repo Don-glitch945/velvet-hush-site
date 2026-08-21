@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { X, ChevronDown, Tag, Info, Mail, Settings, LogOut, LogIn, ShieldCheck, Package } from "lucide-react";
+import { X, ChevronDown, Tag, Info, Mail, Settings, LogOut, LogIn, ShieldCheck, Package, User, Wallet } from "lucide-react";
 
 // Slides in from the right edge of the screen, opened via the hamburger
 // icon in the top-left of the header. Mirrors the cart drawer's layout
@@ -18,7 +18,9 @@ export default function SideMenu({
   onSettings,
   onLogout,
   onSignIn,
-  onAccount,
+  onDashboard,
+  onOrders,
+  onBalance,
 }) {
   const [visible, setVisible] = useState(false);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
@@ -107,8 +109,14 @@ export default function SideMenu({
                 <p className="text-xs truncate" style={{ color: "var(--muted)" }}>{user.email}</p>
                 <p className="text-xs mt-1" style={{ color: "var(--brass)" }}>Balance: ${(profile?.balance ?? 0).toFixed(2)}</p>
               </div>
-              <button onClick={onAccount} className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-left rounded-md hover:opacity-80" style={{ color: "var(--ink)" }}>
-                <Package size={15} style={{ color: "var(--brass)" }} /> My Account &amp; Orders
+              <button onClick={onDashboard} className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-left rounded-md hover:opacity-80" style={{ color: "var(--ink)" }}>
+                <User size={15} style={{ color: "var(--brass)" }} /> Dashboard
+              </button>
+              <button onClick={onOrders} className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-left rounded-md hover:opacity-80" style={{ color: "var(--ink)" }}>
+                <Package size={15} style={{ color: "var(--brass)" }} /> Order History
+              </button>
+              <button onClick={onBalance} className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-left rounded-md hover:opacity-80" style={{ color: "var(--ink)" }}>
+                <Wallet size={15} style={{ color: "var(--brass)" }} /> Add Balance
               </button>
               {isAdmin && (
                 <button onClick={onAdmin} className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-left rounded-md hover:opacity-80" style={{ color: "var(--ink)" }}>

@@ -10,7 +10,9 @@ import { DEFAULT_CATEGORIES } from "./data/defaultCategories.js";
 import { resolveIcon } from "./lib/icons.js";
 import AuthModal from "./components/AuthModal.jsx";
 import AdminPanel from "./components/AdminPanel.jsx";
-import AccountPanel from "./components/AccountPanel.jsx";
+import AccountDashboard from "./components/AccountDashboard.jsx";
+import OrderHistory from "./components/OrderHistory.jsx";
+import AddBalance from "./components/AddBalance.jsx";
 import ActionToast from "./components/ActionToast.jsx";
 import SideMenu from "./components/SideMenu.jsx";
 import SettingsModal from "./components/SettingsModal.jsx";
@@ -271,7 +273,9 @@ export default function Storefront() {
   const goContact = () => { setPage("contact"); window.scrollTo?.(0, 0); };
   const goAbout = () => { setPage("about"); window.scrollTo?.(0, 0); };
   const goAdmin = () => { setPage("admin"); setUserMenuOpen(false); window.scrollTo?.(0, 0); };
-  const goAccount = () => { setPage("account"); setUserMenuOpen(false); setMenuOpen(false); window.scrollTo?.(0, 0); };
+  const goDashboard = () => { setPage("dashboard"); setUserMenuOpen(false); setMenuOpen(false); window.scrollTo?.(0, 0); };
+  const goOrderHistory = () => { setPage("orders"); setUserMenuOpen(false); setMenuOpen(false); window.scrollTo?.(0, 0); };
+  const goAddBalance = () => { setPage("balance"); setUserMenuOpen(false); setMenuOpen(false); window.scrollTo?.(0, 0); };
   const [payment, setPayment] = useState("card");
 
   const handleAuthSuccess = () => {
@@ -394,8 +398,14 @@ export default function Storefront() {
                         <p className="text-xs truncate" style={{ color: "var(--muted)" }}>{user.email}</p>
                         <p className="text-xs mt-1" style={{ color: "var(--brass)" }}>Balance: ${(profile?.balance ?? 0).toFixed(2)}</p>
                       </div>
-                      <button onClick={goAccount} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left hover:opacity-80" style={{ color: "var(--ink)" }}>
-                        <Package size={14} style={{ color: "var(--brass)" }} /> My Account &amp; Orders
+                      <button onClick={goDashboard} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left hover:opacity-80" style={{ color: "var(--ink)" }}>
+                        <User size={14} style={{ color: "var(--brass)" }} /> Dashboard
+                      </button>
+                      <button onClick={goOrderHistory} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left hover:opacity-80" style={{ color: "var(--ink)" }}>
+                        <Package size={14} style={{ color: "var(--brass)" }} /> Order History
+                      </button>
+                      <button onClick={goAddBalance} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left hover:opacity-80" style={{ color: "var(--ink)" }}>
+                        <Wallet size={14} style={{ color: "var(--brass)" }} /> Add Balance
                       </button>
                       <button onClick={() => { setUserMenuOpen(false); setSettingsOpen(true); }} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left hover:opacity-80" style={{ color: "var(--ink)" }}>
                         <Settings size={14} style={{ color: "var(--muted)" }} /> Settings
@@ -488,7 +498,9 @@ export default function Storefront() {
         profile={profile}
         isAdmin={isAdmin}
         onAdmin={() => { setMenuOpen(false); goAdmin(); }}
-        onAccount={() => { setMenuOpen(false); goAccount(); }}
+        onDashboard={() => { setMenuOpen(false); goDashboard(); }}
+        onOrders={() => { setMenuOpen(false); goOrderHistory(); }}
+        onBalance={() => { setMenuOpen(false); goAddBalance(); }}
         onSettings={() => { setMenuOpen(false); setSettingsOpen(true); }}
         onLogout={() => { logOut(); setMenuOpen(false); }}
         onSignIn={() => { setMenuOpen(false); setAuthModalOpen(true); }}
@@ -772,16 +784,32 @@ export default function Storefront() {
         </section>
       )}
 
-      {page === "account" && (
+      {(page === "dashboard" || page === "orders" || page === "balance") && (
         user ? (
-          <AccountPanel
-            user={user}
-            profile={profile}
-            orders={orders}
-            ordersLoading={ordersLoading}
-            onBack={goHome}
-            onSettings={() => setSettingsOpen(true)}
-          />
+          page === "dashboard" ? (
+            <AccountDashboard
+              user={user}
+              profile={profile}
+              orders={orders}
+              ordersLoading={ordersLoading}
+              onBack={goHome}
+              onSettings={() => setSettingsOpen(true)}
+              onOrders={goOrderHistory}
+              onAddBalance={goAddBalance}
+            />
+          ) : page === "orders" ? (
+            <OrderHistory
+              orders={orders}
+              ordersLoading={ordersLoading}
+              onBack={goDashboard}
+            />
+          ) : (
+            <AddBalance
+              profile={profile}
+              apiUrl={API_URL}
+              onBack={goDashboard}
+            />
+          )
         ) : (
           <section className="max-w-lg mx-auto px-5 py-24 text-center">
             <User size={28} className="mx-auto mb-4" style={{ color: "var(--muted)" }} />
