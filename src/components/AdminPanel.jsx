@@ -583,6 +583,50 @@ function AboutContentForm() {
   );
 }
 
+function FooterContentForm() {
+  const { content, loading } = useSiteContent("footer");
+  const [form, setForm] = useState(null);
+  const [saving, setSaving] = useState(false);
+
+  const draft = form || {
+    disclaimer: content?.disclaimer || "Velvet Hush — demo storefront. No real orders are placed. Must be 21+ to purchase tobacco, vape, and adult products; ID checked on delivery. Not for sale where prohibited by law.",
+    copyright: content?.copyright || "© 2026 Velvet Hush. All rights reserved.",
+  };
+  const set = (patch) => setForm({ ...draft, ...patch });
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await updateSiteContent("footer", draft);
+      setForm(null);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) return <p className="text-sm" style={{ color: "var(--muted)" }}>Loading…</p>;
+
+  return (
+    <div className="p-4 rounded-lg border space-y-3" style={{ borderColor: "var(--border)", background: "var(--surface)" }}>
+      <div>
+        <label className="block text-xs mb-1" style={{ color: "var(--muted)" }}>Disclaimer line</label>
+        <textarea value={draft.disclaimer} onChange={(e) => set({ disclaimer: e.target.value })}
+          rows={3} className="w-full px-3 py-2 rounded border text-sm resize-none" style={inputStyle} />
+      </div>
+      <div>
+        <label className="block text-xs mb-1" style={{ color: "var(--muted)" }}>Copyright line</label>
+        <input value={draft.copyright} onChange={(e) => set({ copyright: e.target.value })}
+          className="w-full px-3 py-2 rounded border text-sm" style={inputStyle} />
+      </div>
+      <button onClick={save} disabled={saving}
+        className="py-2 px-5 rounded text-sm font-medium flex items-center justify-center gap-2"
+        style={{ background: "var(--brass)", color: "#1A1520" }}>
+        <Save size={13} /> {saving ? "Saving…" : "Save footer text"}
+      </button>
+    </div>
+  );
+}
+
 function ContentTab() {
   return (
     <div className="space-y-10">
@@ -593,6 +637,10 @@ function ContentTab() {
       <div>
         <h3 className="font-serif text-lg mb-3" style={{ fontFamily: "Fraunces, serif" }}>About Us page</h3>
         <AboutContentForm />
+      </div>
+      <div>
+        <h3 className="font-serif text-lg mb-3" style={{ fontFamily: "Fraunces, serif" }}>Footer text</h3>
+        <FooterContentForm />
       </div>
     </div>
   );

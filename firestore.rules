@@ -50,5 +50,21 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isAdmin();
     }
+
+    // ---- categories/{categoryId} ----
+    // Public read (nav bar renders for signed-out visitors too).
+    // Only admins can create/update/delete categories.
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ---- content/{docId} ----
+    // Editable site copy: content/about, content/contact, content/footer.
+    // Public read, admin-only write.
+    match /content/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
   }
 }

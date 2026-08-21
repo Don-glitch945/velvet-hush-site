@@ -174,6 +174,7 @@ export default function Storefront() {
   const { categories: fsCategories } = useCategories();
   const { content: contactContent } = useSiteContent("contact");
   const { content: aboutContent } = useSiteContent("about");
+  const { content: footerContent } = useSiteContent("footer");
 
   // Firestore categories win once the admin has added any; until then,
   // fall back to the built-in defaults so the storefront isn't empty.
@@ -296,16 +297,20 @@ export default function Storefront() {
       {/* Header */}
       <header className="sticky top-0 z-20 backdrop-blur border-b" style={{ borderColor: "var(--border)", background: "rgba(20,17,26,0.85)" }}>
         <div className="max-w-6xl mx-auto px-5 py-4 flex items-center justify-between gap-4">
-          <button onClick={goHome} className="font-serif text-xl tracking-wide" style={{ fontFamily: "Fraunces, serif", color: "var(--ink)" }}>
-            Velvet <span style={{ color: "var(--brass)" }}>Hush</span>
-          </button>
-          <nav className="hidden md:flex items-center gap-6 text-sm">
-            {CATEGORIES.map(c => (
-              <button key={c.id} onClick={() => goCategory(c.id)} className="hover:opacity-70 transition-opacity" style={{ color: "var(--muted)" }}>{c.name}</button>
-            ))}
-            <button onClick={goAbout} className="hover:opacity-70 transition-opacity" style={{ color: "var(--muted)" }}>About</button>
-            <button onClick={goContact} className="hover:opacity-70 transition-opacity" style={{ color: "var(--muted)" }}>Contact</button>
-          </nav>
+          {/* Left cluster: logo + nav, pinned together top-left */}
+          <div className="flex items-center gap-8 min-w-0">
+            <button onClick={goHome} className="font-serif text-xl tracking-wide shrink-0" style={{ fontFamily: "Fraunces, serif", color: "var(--ink)" }}>
+              Velvet <span style={{ color: "var(--brass)" }}>Hush</span>
+            </button>
+            <nav className="hidden md:flex items-center gap-6 text-sm">
+              {CATEGORIES.map(c => (
+                <button key={c.id} onClick={() => goCategory(c.id)} className="hover:opacity-70 transition-opacity" style={{ color: "var(--muted)" }}>{c.name}</button>
+              ))}
+              <button onClick={goAbout} className="hover:opacity-70 transition-opacity" style={{ color: "var(--muted)" }}>About</button>
+              <button onClick={goContact} className="hover:opacity-70 transition-opacity" style={{ color: "var(--muted)" }}>Contact</button>
+            </nav>
+          </div>
+          {/* Right cluster: search, profile icon, cart */}
           <div className="flex items-center gap-2">
             <div ref={searchBoxRef} className="relative hidden sm:block">
               <div className="flex items-center gap-2 px-3 py-2 rounded-md" style={{ background: "var(--surface)" }}>
@@ -763,8 +768,8 @@ export default function Storefront() {
             <button onClick={goContact} className="underline hover:opacity-70">Contact page</button>
           </div>
           <div className="text-xs leading-relaxed" style={{ color: "var(--muted)" }}>
-            <p className="mb-2">Velvet Hush — demo storefront. No real orders are placed. Must be 21+ to purchase tobacco, vape, and adult products; ID checked on delivery. Not for sale where prohibited by law.</p>
-            <p>© 2026 Velvet Hush. All rights reserved.</p>
+            <p className="mb-2">{footerContent?.disclaimer || "Velvet Hush — demo storefront. No real orders are placed. Must be 21+ to purchase tobacco, vape, and adult products; ID checked on delivery. Not for sale where prohibited by law."}</p>
+            <p>{footerContent?.copyright || "© 2026 Velvet Hush. All rights reserved."}</p>
           </div>
         </div>
       </footer>
