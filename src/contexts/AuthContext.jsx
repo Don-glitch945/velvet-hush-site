@@ -8,6 +8,9 @@ import {
   signOut,
   updateProfile,
   sendPasswordResetEmail,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
+  updatePassword,
 } from "firebase/auth";
 import {
   doc,
@@ -98,6 +101,18 @@ export function AuthProvider({ children }) {
 
   const resetPassword = (email) => sendPasswordResetEmail(auth, email);
 
+  // Firebase requires a "recent login" before it'll let you change a
+  // password, so we re-authenticate with the current password first.
+  // This only works for email/password accounts — Google-only accounts
+  // don't have a Firebase password to change.
+  const changePassword = async (currentPassword, newPassword) => {
+    const current = auth.currentUser;
+    if (!current || !current.email) throw new Error("Not signed in.");
+    const credential = EmailAuthProvider.credential(current.email, currentPassword);
+    await reauthenticateWithCredential(current, credential);
+    await updatePassword(current, newPassword);
+  };
+
   const value = {
     user,
     profile,
@@ -108,6 +123,7 @@ export function AuthProvider({ children }) {
     signInGoogle,
     logOut,
     resetPassword,
+    changePassword,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

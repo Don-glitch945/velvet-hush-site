@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from "react";
-import { ShoppingBag, Flame, ChevronRight, X, Minus, Plus, Search, ArrowLeft, CreditCard, Wallet, Smartphone, Mail, Phone, MapPin, Clock, Send, User, LogOut, ShieldCheck, Ban, CheckCircle2 } from "lucide-react";
+import { ShoppingBag, Flame, ChevronRight, X, Minus, Plus, Search, ArrowLeft, CreditCard, Wallet, Smartphone, Mail, Phone, MapPin, Clock, Send, User, LogOut, ShieldCheck, Ban, CheckCircle2, Menu } from "lucide-react";
 import { useAuth } from "./contexts/AuthContext.jsx";
 import { useProducts } from "./hooks/useProducts.js";
 import { useCategories } from "./hooks/useCategories.js";
@@ -9,6 +9,8 @@ import { resolveIcon } from "./lib/icons.js";
 import AuthModal from "./components/AuthModal.jsx";
 import AdminPanel from "./components/AdminPanel.jsx";
 import ActionToast from "./components/ActionToast.jsx";
+import SideMenu from "./components/SideMenu.jsx";
+import SettingsModal from "./components/SettingsModal.jsx";
 
 /* ---------------------------------------------------------
    TOKENS
@@ -171,6 +173,8 @@ export default function Storefront() {
   const searchBoxRef = useRef(null);
   const [authToast, setAuthToast] = useState(false);
   const [cartToast, setCartToast] = useState(null); // holds the product just added
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const { user, profile, isAdmin, logOut } = useAuth();
   const { products } = useProducts();
@@ -306,8 +310,16 @@ export default function Storefront() {
       {/* Header */}
       <header className="sticky top-0 z-20 backdrop-blur border-b" style={{ borderColor: "var(--border)", background: "rgba(20,17,26,0.85)" }}>
         <div className="max-w-6xl mx-auto px-5 py-4 flex items-center justify-between gap-4">
-          {/* Left cluster: logo + nav, pinned together top-left */}
+          {/* Left cluster: menu + logo + nav, pinned together top-left */}
           <div className="flex items-center gap-8 min-w-0">
+            <button
+              onClick={() => setMenuOpen(true)}
+              className="p-2 rounded-md shrink-0"
+              style={{ background: "var(--surface)" }}
+              aria-label="Open menu"
+            >
+              <Menu size={18} style={{ color: "var(--ink)" }} />
+            </button>
             <button onClick={goHome} className="font-serif text-xl tracking-wide shrink-0" style={{ fontFamily: "Fraunces, serif", color: "var(--ink)" }}>
               Velvet <span style={{ color: "var(--brass)" }}>Hush</span>
             </button>
@@ -454,6 +466,26 @@ export default function Storefront() {
           </div>
         )}
       </header>
+
+      <SideMenu
+        open={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        categories={CATEGORIES}
+        onCategoryClick={(id) => { setMenuOpen(false); goCategory(id); }}
+        onAbout={() => { setMenuOpen(false); goAbout(); }}
+        onContact={() => { setMenuOpen(false); goContact(); }}
+        user={user}
+        profile={profile}
+        isAdmin={isAdmin}
+        onAdmin={() => { setMenuOpen(false); goAdmin(); }}
+        onSettings={() => { setMenuOpen(false); setSettingsOpen(true); }}
+        onLogout={() => { logOut(); setMenuOpen(false); }}
+        onSignIn={() => { setMenuOpen(false); setAuthModalOpen(true); }}
+      />
+
+      {settingsOpen && (
+        <SettingsModal onClose={() => setSettingsOpen(false)} />
+      )}
 
       {authModalOpen && (
         <AuthModal onClose={() => setAuthModalOpen(false)} onSuccess={handleAuthSuccess} />
@@ -763,8 +795,12 @@ export default function Storefront() {
                 if (!p) return null;
                 return (
                   <div key={id} className="flex gap-3 items-center">
-                    <div className="w-14 h-14 rounded-md flex items-center justify-center shrink-0" style={{ background: "var(--surface-2)" }}>
-                      <div className="w-8 h-8"><Pattern type={p.pattern} tone={CATEGORIES.find(c => c.id === p.cat)?.tone === "oxblood" ? "oxblood" : "brass"} /></div>
+                    <div className="w-14 h-14 rounded-md flex items-center justify-center shrink-0 overflow-hidden" style={{ background: "var(--surface-2)" }}>
+                      {p.imageUrl ? (
+                        <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-8 h-8"><Pattern type={p.pattern} tone={CATEGORIES.find(c => c.id === p.cat)?.tone === "oxblood" ? "oxblood" : "brass"} /></div>
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm truncate">{p.name}</p>
