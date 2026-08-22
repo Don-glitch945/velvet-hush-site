@@ -1,12 +1,14 @@
 import React, { useState } from "react";
-import { ArrowLeft, Trash2, Plus, Save, Database, ShieldCheck, Package, Users as UsersIcon, Tags, FileText } from "lucide-react";
+import { ArrowLeft, Trash2, Plus, Save, Database, ShieldCheck, Package, Users as UsersIcon, Tags, FileText, MessageCircle } from "lucide-react";
 import { useProducts, createProduct, updateProduct, deleteProduct, seedDemoCatalog } from "../hooks/useProducts.js";
 import { useUsers, setUserBalance, setUserRole } from "../hooks/useUsers.js";
 import { useCategories, createCategory, updateCategory, deleteCategory, seedDefaultCategories } from "../hooks/useCategories.js";
 import { useSiteContent, updateSiteContent } from "../hooks/useSiteContent.js";
+import { useChatThreads, useChatMessages, sendChatMessage, markThreadRead } from "../hooks/useChat.js";
 import { useAuth } from "../contexts/AuthContext.jsx";
 import { ICON_OPTIONS, resolveIcon } from "../lib/icons.js";
 import { DEFAULT_CATEGORIES } from "../data/defaultCategories.js";
+import ChatThread from "./ChatThread.jsx";
 
 const inputStyle = {
   background: "var(--surface-2)",
@@ -646,6 +648,97 @@ function ContentTab() {
   );
 }
 
+function formatThreadTime(ts) {
+  try {
+    const d = ts?.toDate ? ts.toDate() : ts ? new Date(ts) : null;
+    if (!d || isNaN(d.getTime())) return "";
+    return d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  } catch {
+    return "";
+  }
+}
+
+function ChatsTab() {
+  const { threads, loading } = useChatThreads(true);
+  const [selectedUid, setSelectedUid] = useState(null);
+  const [sending, setSending] = useState(false);
+  const { messages, loading: messagesLoading } = useChatMessages(selectedUid);
+  const selected = threads.find((t) => t.uid === selectedUid);
+
+  const openThread = (uid) => {
+    setSelectedUid(uid);
+    markThreadRead(uid, "admin");
+  };
+
+  const handleSend = async ({ text, file }) => {
+    setSending(true);
+    try {
+      await sendChatMessage({ uid: selectedUid, sender: "admin", text, file });
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="rounded-lg border overflow-hidden" style={{ borderColor: "var(--border)", background: "var(--surface)" }}>
+      <div className="grid grid-cols-1 md:grid-cols-[280px_1fr] h-[560px]">
+        <div className="border-b md:border-b-0 md:border-r overflow-y-auto" style={{ borderColor: "var(--border)" }}>
+          {loading ? (
+            <p className="text-sm p-4" style={{ color: "var(--muted)" }}>Loading conversations…</p>
+          ) : threads.length === 0 ? (
+            <p className="text-sm p-4" style={{ color: "var(--muted)" }}>No customer messages yet.</p>
+          ) : (
+            threads.map((t) => (
+              <button
+                key={t.uid}
+                onClick={() => openThread(t.uid)}
+                className="w-full text-left px-4 py-3 border-b hover:opacity-90"
+                style={{
+                  borderColor: "var(--border)",
+                  background: selectedUid === t.uid ? "var(--surface-2)" : "transparent",
+                }}
+              >
+                <div className="flex items-center justify-between gap-2 mb-0.5">
+                  <p className="text-sm truncate" style={{ color: "var(--ink)" }}>{t.displayName || t.email || "Customer"}</p>
+                  {t.unreadByAdmin && <span className="w-2 h-2 rounded-full shrink-0" style={{ background: "var(--oxblood)" }} />}
+                </div>
+                <p className="text-xs truncate mb-1" style={{ color: "var(--muted)" }}>
+                  {t.lastSender === "admin" ? "You: " : ""}{t.lastMessage || "—"}
+                </p>
+                <p className="text-[10px]" style={{ color: "var(--muted)" }}>{formatThreadTime(t.lastMessageAt)}</p>
+              </button>
+            ))
+          )}
+        </div>
+        <div className="min-h-0">
+          {!selectedUid ? (
+            <div className="h-full flex items-center justify-center px-6 text-center">
+              <p className="text-sm" style={{ color: "var(--muted)" }}>Select a conversation to view and reply.</p>
+            </div>
+          ) : (
+            <div className="h-full flex flex-col min-h-0">
+              <div className="px-4 py-3 border-b shrink-0" style={{ borderColor: "var(--border)" }}>
+                <p className="text-sm" style={{ color: "var(--ink)" }}>{selected?.displayName || selected?.email || "Customer"}</p>
+                {selected?.displayName && <p className="text-xs" style={{ color: "var(--muted)" }}>{selected.email}</p>}
+              </div>
+              <div className="flex-1 min-h-0">
+                <ChatThread
+                  mode="admin"
+                  messages={messages}
+                  loading={messagesLoading}
+                  sending={sending}
+                  onSend={handleSend}
+                  emptyText="No messages in this conversation yet."
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminPanel({ onBack }) {
   const [tab, setTab] = useState("products");
 
@@ -678,12 +771,18 @@ export default function AdminPanel({ onBack }) {
           style={{ borderColor: tab === "users" ? "var(--brass)" : "transparent", color: tab === "users" ? "var(--brass)" : "var(--muted)" }}>
           <UsersIcon size={14} /> Users & Balances
         </button>
+        <button onClick={() => setTab("chats")}
+          className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px whitespace-nowrap"
+          style={{ borderColor: tab === "chats" ? "var(--brass)" : "transparent", color: tab === "chats" ? "var(--brass)" : "var(--muted)" }}>
+          <MessageCircle size={14} /> Chats
+        </button>
       </div>
 
       {tab === "products" && <ProductsTab />}
       {tab === "categories" && <CategoriesTab />}
       {tab === "content" && <ContentTab />}
       {tab === "users" && <UsersTab />}
+      {tab === "chats" && <ChatsTab />}
     </section>
   );
 }

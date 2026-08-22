@@ -16,6 +16,7 @@ import AddBalance from "./components/AddBalance.jsx";
 import ActionToast from "./components/ActionToast.jsx";
 import SideMenu from "./components/SideMenu.jsx";
 import SettingsModal from "./components/SettingsModal.jsx";
+import ChatWidget from "./components/ChatWidget.jsx";
 
 /* ---------------------------------------------------------
    TOKENS
@@ -504,6 +505,13 @@ export default function Storefront() {
         onSettings={() => { setMenuOpen(false); setSettingsOpen(true); }}
         onLogout={() => { logOut(); setMenuOpen(false); }}
         onSignIn={() => { setMenuOpen(false); setAuthModalOpen(true); }}
+      />
+
+      <ChatWidget
+        user={user}
+        profile={profile}
+        isAdmin={isAdmin}
+        onRequireAuth={() => setAuthModalOpen(true)}
       />
 
       {settingsOpen && (

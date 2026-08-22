@@ -82,6 +82,38 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // ---- chatThreads/{uid} ----
+    // One summary doc per customer support thread (lastMessage preview,
+    // timestamps, unread flags) so the admin panel can list every
+    // conversation without scanning the whole `chats` collection. The
+    // customer creates their own thread doc the first time they message;
+    // after that either side can update it (to bump the preview / clear
+    // their own unread flag). A customer can never touch another
+    // customer's thread since every check is scoped to isSelf(uid).
+    match /chatThreads/{uid} {
+      allow get: if isSelf(uid) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isSelf(uid) && request.resource.data.uid == uid;
+      allow update: if isSelf(uid) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ---- chats/{messageId} ----
+    // Individual support-chat messages, matched to a thread by the `uid`
+    // field (same pattern as orders). A customer can only read/create
+    // messages in their OWN thread, and can only ever create them as
+    // sender == "user" — there's no way for a non-admin write to slip
+    // in as sender == "admin", which is what actually enforces "only
+    // admins can reply". Admins can read and reply in any thread.
+    match /chats/{messageId} {
+      allow get, list: if isSignedIn() && (resource.data.uid == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && (
+        (isSelf(request.resource.data.uid) && request.resource.data.sender == 'user') ||
+        (isAdmin() && request.resource.data.sender == 'admin')
+      );
+      allow update, delete: if isAdmin();
+    }
+
     // ---- content/{docId} ----
     // Editable site copy: content/about, content/contact, content/footer.
     // Public read, admin-only write.

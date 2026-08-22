@@ -18,3 +18,6 @@ const firebaseConfig = {
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+// Note: Cloud Storage is intentionally not initialized here — since
+// Feb 2026 it requires the paid Blaze plan even at $0 usage. Chat file
+// attachments upload to Cloudinary's free tier instead (see useChat.js).
